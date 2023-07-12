@@ -1,0 +1,169 @@
+{
+"skeleton": { "hash": "2Wr8Fm4+jBJHTSMjBvfb/4HVH5s", "spine": "3.6.38", "width": 349, "height": 373, "images": "" },
+"bones": [
+	{ "name": "root" },
+	{ "name": "shengli", "parent": "root" },
+	{ "name": "daguang", "parent": "shengli" },
+	{ "name": "guangbo", "parent": "shengli" },
+	{ "name": "shengli_zi1", "parent": "shengli" },
+	{ "name": "shengli_zi2", "parent": "shengli" },
+	{ "name": "shibai", "parent": "root", "x": 18, "y": 18 }
+],
+"slots": [
+	{ "name": "shengli", "bone": "shengli_zi1" },
+	{ "name": "shengli2", "bone": "shengli_zi2" },
+	{ "name": "daguang", "bone": "daguang", "blend": "additive" },
+	{ "name": "guangbo", "bone": "guangbo", "blend": "additive" },
+	{ "name": "shibai", "bone": "shibai", "attachment": "shibai" }
+],
+"skins": {
+	"default": {
+		"daguang": {
+			"daguang": { "width": 150, "height": 159 }
+		},
+		"guangbo": {
+			"guangbo": { "width": 128, "height": 128 }
+		},
+		"shengli": {
+			"shengli": { "width": 345, "height": 417 }
+		},
+		"shengli2": {
+			"shengli": { "width": 345, "height": 417 }
+		},
+		"shibai": {
+			"shibai": { "width": 349, "height": 373 }
+		}
+	}
+},
+"animations": {
+	"shengli": {
+		"slots": {
+			"daguang": {
+				"color": [
+					{
+						"time": 0.0667,
+						"color": "fffffffe",
+						"curve": [ 0.389, 0.01, 0.595, 0.89 ]
+					},
+					{ "time": 0.4, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.0667, "name": "daguang" }
+				]
+			},
+			"guangbo": {
+				"color": [
+					{
+						"time": 0.0667,
+						"color": "fffffffe",
+						"curve": [ 0.463, 0, 0.58, 0.95 ]
+					},
+					{ "time": 0.7333, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0.0667, "name": "guangbo" }
+				]
+			},
+			"shengli": {
+				"attachment": [
+					{ "time": 0, "name": "shengli" }
+				]
+			},
+			"shengli2": {
+				"color": [
+					{
+						"time": 0.0667,
+						"color": "fffffffe",
+						"curve": [ 0.463, 0, 0.473, 0.88 ]
+					},
+					{ "time": 0.4667, "color": "ffffff00" }
+				],
+				"attachment": [
+					{ "time": 0, "name": null },
+					{ "time": 0.0667, "name": "shengli" }
+				]
+			},
+			"shibai": {
+				"attachment": [
+					{ "time": 0, "name": null }
+				]
+			}
+		},
+		"bones": {
+			"shengli_zi1": {
+				"scale": [
+					{
+						"time": 0,
+						"x": 3,
+						"y": 3,
+						"curve": [ 0.392, 0, 0.972, 0.84 ]
+					},
+					{
+						"time": 0.0667,
+						"x": 0.75,
+						"y": 0.75,
+						"curve": [ 0.026, 0.22, 0.75, 1 ]
+					},
+					{ "time": 0.1667, "x": 1, "y": 1 }
+				]
+			},
+			"daguang": {
+				"scale": [
+					{
+						"time": 0.0667,
+						"x": 3,
+						"y": 3,
+						"curve": [ 0.067, 0.59, 0.473, 0.94 ]
+					},
+					{ "time": 0.4, "x": 14, "y": 14 }
+				]
+			},
+			"guangbo": {
+				"scale": [
+					{
+						"time": 0.0667,
+						"x": 4,
+						"y": 4,
+						"curve": [ 0.04, 0.65, 0.476, 0.97 ]
+					},
+					{ "time": 0.7333, "x": 10, "y": 10 }
+				]
+			},
+			"shengli_zi2": {
+				"scale": [
+					{
+						"time": 0.0667,
+						"x": 0.75,
+						"y": 0.75,
+						"curve": [ 0.035, 0.54, 0.515, 0.96 ]
+					},
+					{ "time": 0.4667, "x": 1.8, "y": 1.8 }
+				]
+			}
+		}
+	},
+	"shibai": {
+		"slots": {
+			"shibai": {
+				"color": [
+					{ "time": 0, "color": "ffffff00" },
+					{ "time": 0.4333, "color": "fffffffe" }
+				]
+			}
+		},
+		"bones": {
+			"shibai": {
+				"translate": [
+					{
+						"time": 0,
+						"x": 0,
+						"y": 100,
+						"curve": [ 0.019, 0.38, 0.476, 1 ]
+					},
+					{ "time": 0.5667, "x": 0, "y": 0 }
+				]
+			}
+		}
+	}
+}
+}

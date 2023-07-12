@@ -1,0 +1,49 @@
+/* 
+	当前设备如果已经安装local里的字体，可以极致提升游戏加载速度；
+	你也可以自行修改下面local里的字体，但得确保你已经安装该字体；
+	以下的名称参照github.com/libccy/noname/tree/master/font列表；
+	如果你安装完以下字体后需要重启无名杀APP；
+	注：以下设置仅在PC端测试有效，手机端未测，但是手机端第一次加载后会缓存字体，所以有没有都无所谓；
+*/
+
+/*手杀*/
+@font-face {
+	font-family: 'shousha';
+	src: local('方正隶变_GBK'), url('../../font/shousha.ttf');
+}
+
+/*黄草*/
+@font-face {
+	font-family: 'huangcao';
+	src: local('方正黄草简体'), url('../../font/huangcao.ttf');
+}
+
+/*小篆*/
+@font-face {
+	font-family: 'xiaozhuan';
+	src: local('方正小篆体'), url('../../font/xiaozhuan.ttf');
+}
+
+/*行楷*/
+@font-face {
+	font-family: 'xingkai';
+	src: local('方正行楷_GBK'), url('../../font/xingkai.ttf');
+}
+
+/*新魏*/
+@font-face {
+	font-family: 'xinwei';
+	src: local('华文新魏'), url('../../font/xinwei.ttf');
+}
+
+/*圆隶*/
+@font-face {
+	font-family: 'yuanli';
+	src: local('方正北魏楷书_GBK'), url('../../font/yuanli.ttf');
+}
+
+/*花色*/
+@font-face {
+	font-family: 'Suits';
+	src: local('Noname Suit'), url('../../font/suits.ttf');
+}
