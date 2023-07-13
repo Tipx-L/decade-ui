@@ -1,0 +1,19 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+jobs:
+  Release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@main
+    - run: zip -9 -r -u decade-ui.zip * && cp decade-ui.zip decade-ui-no-dynamics.zip && zip -d decade-ui-no-dynamics.zip assets/dynamic/*
+    - uses: softprops/action-gh-release@master
+      with:
+        files: |
+          decade-ui.zip
+          decade-ui-no-dynamics.zip
+        name: 十周年UI ${{ github.ref_name }}

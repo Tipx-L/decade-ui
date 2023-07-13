@@ -10196,8 +10196,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 				return '<p style="color:rgb(210,210,000); font-size:12px; line-height:14px; text-shadow: 0 0 2px black;">' + log.join('<br>') + '</p>';
 			})(),
 			author: "Show-K←寰宇星城←短歌 QQ464598631",
-			diskURL: "",
-			forumURL: "",
+			diskURL: "https://cdn.jsdelivr.net/gh/Tipx-L/decade-ui@releases/latest/download/decade-ui.zip",
+			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
 			version: "1.2.0.220114.27",
 		},
 		files: {
