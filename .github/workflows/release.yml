@@ -16,4 +16,4 @@ jobs:
         files: |
           decade-ui.zip
           decade-ui-no-dynamics.zip
-        name: 十周年UI ${{ github.ref_name }}
+        name: 十周年UI ${{github.ref_name}}
