@@ -10175,9 +10175,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：<a download href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
 					'最新版下载链接：',
-					'<a download href="https://cdn.jsdelivr.net/gh/Tipx-L/decade-ui@releases/latest/download/decade-ui.zip" target="_blank">https:<wbr>//<wbr>cdn<wbr>.jsdelivr<wbr>.net<wbr>/gh<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui@releases<wbr>/latest<wbr>/download<wbr>/decade<wbr>-ui<wbr>.zip</a>',
 					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">https:<wbr>//<wbr>ghproxy<wbr>.com<wbr>/https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui<wbr>/releases<wbr>/latest<wbr>/download<wbr>/decade<wbr>-ui<wbr>.zip</a>',
 					'<a download href="https://hub.fgit.ml/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">https:<wbr>//<wbr>hub<wbr>.fgit<wbr>.ml<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui<wbr>/releases<wbr>/latest<wbr>/download<wbr>/decade<wbr>-ui<wbr>.zip</a>',
+					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui<wbr>/releases<wbr>/latest<wbr>/download<wbr>/decade<wbr>-ui<wbr>.zip</a>',
 					'或者关注微信公众号“无名杀扩展交流”，及时获取《十周年UI》最新版',
 					/*
 					'- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；',
@@ -10196,7 +10196,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 				return '<p style="color:rgb(210,210,000); font-size:12px; line-height:14px; text-shadow: 0 0 2px black;">' + log.join('<br>') + '</p>';
 			})(),
 			author: "Show-K←寰宇星城←短歌 QQ464598631",
-			diskURL: "https://cdn.jsdelivr.net/gh/Tipx-L/decade-ui@releases/latest/download/decade-ui.zip",
+			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
 			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
 			version: "1.2.0.220114.27",
 		},
