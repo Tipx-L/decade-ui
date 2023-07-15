@@ -5847,6 +5847,12 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										isExt = true;
 									} else {
 										switch (value) {
+											case '先':
+												filename = 'xianshou';
+												break;
+											case '后':
+												filename = 'houshou';
+												break;
 											case '猜':
 												filename = 'cai';
 												if (_status.mode == 'purple' && identity == 'cai') {
