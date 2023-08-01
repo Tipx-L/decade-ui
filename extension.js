@@ -7210,8 +7210,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								node.popupNumber = null;
 							}
 
-							node.textContent = num;
-							node.dataset.text = num;
+							node.innerHTML = num;
+							node.dataset.text = node.textContent || node.innerText;
 							node.nature = nature || 'soil';
 							this.damagepopups.push(node);
 						}
