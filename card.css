@@ -157,6 +157,15 @@
 	z-index: 1;
 }
 
+.card.fullborder>.name,
+.card.fullborder>.name.long,
+.card.fullimage>.name,
+.card.fullimage>.name.long {
+	background-color: black;
+	border-color: white;
+	font-family: shousha;
+}
+
 #window[data-card-alternate-name-visible='off'] .card>.name,
 #window[data-card-alternate-name-visible='off'] .card>.range:not(.card-tag) {
 	display: none;

@@ -294,6 +294,9 @@
 	right: 26%;
 	bottom: 1%;
 	position: absolute;
+	white-space: nowrap;
+	writing-mode: vertical-rl;
+	-webkit-writing-mode: vertical-rl;
 }
 
 .player.unseen>.camp-wrap>.avatar-name,

@@ -161,7 +161,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									uninit: lib.element.player.uninit,
 									setModeState: lib.element.player.setModeState,
 									$compare: lib.element.player.$compare,
-									$disableEquip: lib.element.player.$disableEquip,
 									$damage: lib.element.player.$damage,
 									$damagepop: lib.element.player.$damagepop,
 									$dieAfter: lib.element.player.$dieAfter,
@@ -352,9 +351,10 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							this.node.campWrap.node.campName.style.backgroundImage = '';
 							this.node.name2.innerHTML = '';
 
-							for (var i = 1; i < 6; i++) if (this.isDisabled(i)) this.$enableEquip('equip' + i);
-
-							if (this.storage._disableJudge) {
+							this.expandedSlots = {};
+							this.disabledSlots = {};
+							this.$syncDisable();
+							if (this.isDisabledJudge()) {
 								game.broadcastAll(function (player) {
 									player.storage._disableJudge = false;
 									for (var i = 0; i < player.node.judges.childNodes.length; i++) {
@@ -1654,6 +1654,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										var dialog = info.chooseButton.dialog(event, player);
 										if (info.chooseButton.chooseControl) {
 											var next = player.chooseControl(info.chooseButton.chooseControl(event, player));
+											if (dialog.direct) next.direct = true;
+											if (dialog.forceDirect) next.forceDirect = true;
 											next.dialog = dialog;
 											next.set('ai', info.chooseButton.check ||
 												function () {
@@ -1661,6 +1663,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 												});
 										} else {
 											var next = player.chooseButton(dialog);
+											if (dialog.direct) next.direct = true;
+											if (dialog.forceDirect) next.forceDirect = true;
 											next.set('ai', info.chooseButton.check ||
 												function () {
 													return 1;
@@ -1930,6 +1934,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										var dialog = info.chooseButton.dialog(event, player);
 										if (info.chooseButton.chooseControl) {
 											var next = player.chooseControl(info.chooseButton.chooseControl(event, player));
+											if (dialog.direct) next.direct = true;
+											if (dialog.forceDirect) next.forceDirect = true;
 											next.dialog = dialog;
 											next.set('ai', info.chooseButton.check ||
 												function () {
@@ -1939,6 +1945,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 											next.type = 'chooseToUse_button';
 										} else {
 											var next = player.chooseButton(dialog);
+											if (dialog.direct) next.direct = true;
+											if (dialog.forceDirect) next.forceDirect = true;
 											next.set('ai', info.chooseButton.check ||
 												function () {
 													return 1;
@@ -2041,23 +2049,24 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							player.equiping = true;
 							"step 3"
 							var info = get.info(card, false);
-							var current = player.getCards('e',
-								function (card) {
-									if (info.customSwap) return info.customSwap(card);
-									return get.subtype(card, false) == info.subtype;
-								});
-							if (current.length) {
-								player.lose(current, false, 'visible').set('type', 'equip').set('getlx', false).swapEquip = true;
+							var next = game.createEvent('replaceEquip');
+							next.player = player;
+							next.card = card;
+							next.setContent(info.replaceEquip || 'replaceEquip');
+							"step 4"
+							var info = get.info(card, false);
+							if (get.itemtype(result) == 'cards') {
+								player.lose(result, false, 'visible').set('type', 'equip').set('getlx', false).swapEquip = true;
 								if (info.loseThrow) {
 									player.$throw(current);
 								}
 								event.swapped = true;
-								// event.redo();
 							}
-							"step 4"
-							if (player.isMin() || player.countCards('e', {
-								subtype: get.subtype(card)
-							})) {
+							"step 5"
+							// if (player.isMin() || player.countCards('e', {
+							// 	subtype: get.subtype(card)
+							// })) {
+							if (player.isMin() || !player.canEquip(card)) {
 								event.finish();
 								game.cardsDiscard(card);
 								delete player.equiping;
@@ -2074,7 +2083,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							game.addVideo('equip', player, get.cardInfo(card));
 							game.log(player, '装备了', card);
 							if (event.updatePile) game.updateRoundNumber();
-							"step 5"
+							"step 6"
 							var info = get.info(card, false);
 							if (info.onEquip && (!info.filterEquip || info.filterEquip(card, player))) {
 								if (Array.isArray(info.onEquip)) {
@@ -3533,7 +3542,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									this.node.image.className = 'image';
 
 									var filename = card[2];
-									var vertname = '';
 									var cardname = get.translation(card[2]);
 									this.dataset.suit = card[0];
 									this.$suitnum.$num.textContent = cardnum;
@@ -3564,9 +3572,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (lib.card[filename] && lib.card[filename].nature && lib.card[filename].nature.contains(card[3])) filename += '_' + card[3];
 									}
 
-									for (var i = 0; i < cardname.length; i++) vertname += cardname[i] + '\n';
 									this.$name.innerText = cardname;
-									this.$vertname.innerText = vertname;
+									this.$vertname.innerText = cardname;
 									this.$equip.$suitnum.textContent = cardsuit + cardnum;
 									this.$equip.$name.textContent = ' ' + cardname;
 
@@ -5010,12 +5017,16 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 											if (!cards[i]._tempName) cards[i]._tempName = ui.create.div('.temp-name', cards[i]);
 											var tempname = '';
 											if (cards[i].suit != cardsuit) {
+												if (cardsuit == 'none') {
+													cards[i]._tempName.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+													cards[i]._tempName.style.color = 'white';
+												}
 												var suitData = {
-													'heart': "<span style='color:red;text-shadow:black 0 0 3px;'>♥</span>",
-													'diamond': "<span style='color:red;text-shadow:black 0 0 3px;'>♦</span>",
-													'spade': "<span style='color:black;text-shadow:black 0 0 3px;'>♠</span>",
-													'club': "<span style='color:black;text-shadow:black 0 0 3px;'>♣</span>",
-													'none': "<span style='color:white;text-shadow:black 0 0 3px;'>◎</span>"
+													'heart': "<span style='color:red;'>♥</span>",
+													'diamond': "<span style='color:red;'>♦</span>",
+													'spade': "<span style='color:black;'>♠</span>",
+													'club': "<span style='color:black;'>♣</span>",
+													'none': "<span style='color:white;'>◎</span>"
 												};
 												tempname += suitData[cardsuit];
 											}
@@ -5693,11 +5704,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						var equipSolts = ui.equipSolts = decadeUI.element.create('equips-wrap');
 						equipSolts.back = decadeUI.element.create('equips-back', equipSolts);
 
-						decadeUI.element.create('icon icon-treasure', decadeUI.element.create('equip0', equipSolts.back));
-						decadeUI.element.create('icon icon-saber', decadeUI.element.create('equip1', equipSolts.back));
-						decadeUI.element.create('icon icon-shield', decadeUI.element.create('equip2', equipSolts.back));
-						decadeUI.element.create('icon icon-mount', decadeUI.element.create('equip3', equipSolts.back));
-						decadeUI.element.create('icon icon-mount', decadeUI.element.create('equip4', equipSolts.back));
+						for (let repetition = 0; repetition < 5; repetition++) {
+							decadeUI.element.create(null, equipSolts.back);
+						}
 
 						ui.arena.insertBefore(equipSolts, ui.me);
 						decadeUI.bodySensor.addListener(decadeUI.layout.resize);
@@ -5784,6 +5793,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							tempSkills: {},
 							storage: {},
 							marks: {},
+							expandedSlots: {},
+							disabledSlots: {},
 							ai: {
 								friend: [],
 								enemy: [],
@@ -6016,7 +6027,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 
 						campWrap.appendChild(player.node.name);
 						campWrap.node.avatarName.className = 'avatar-name';
-						campWrap.node.avatarDefaultName.innerHTML = '主<br>将';
+						campWrap.node.avatarDefaultName.innerHTML = '主将';
 
 						var node = {
 							mask: player.insertBefore(decadeUI.element.create('mask'), player.node.identity),
@@ -7295,61 +7306,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						var player = this;
 						target.$throwordered2(card2.copy(false));
 						player.$throwordered2(card1.copy(false));
-					};
-
-					lib.element.player.$disableEquip = function (skill) {
-						game.broadcast(function (player, skill) {
-							player.$disableEquip(skill);
-						}, this, skill);
-						var player = this;
-						if (!player.storage.disableEquip) player.storage.disableEquip = [];
-						player.storage.disableEquip.add(skill);
-						player.storage.disableEquip.sort();
-						var pos = {
-							equip1: '武器栏',
-							equip2: '防具栏',
-							equip3: '+1马栏',
-							equip4: '-1马栏',
-							equip5: '宝物栏'
-						}[skill];
-						if (!pos) return;
-						var card = game.createCard('feichu_' + skill, pos, '');
-						card.fix();
-						card.style.transform = '';
-						card.classList.remove('drawinghidden');
-						card.classList.add('feichu');
-						delete card._transform;
-
-
-						var iconName = {
-							equip1: 'icon feichu icon-saber',
-							equip2: 'icon feichu icon-shield',
-							equip3: 'icon feichu icon-mount',
-							equip4: 'icon feichu icon-mount',
-							equip5: 'icon feichu icon-treasure'
-						}[skill];
-
-						if (iconName) {
-							var icon = decadeUI.element.create(iconName, card);
-							icon.style.zIndex = '1';
-						}
-
-						var equipNum = get.equipNum(card);
-						var equipped = false;
-						for (var i = 0; i < player.node.equips.childNodes.length; i++) {
-							if (get.equipNum(player.node.equips.childNodes[i]) >= equipNum) {
-								player.node.equips.insertBefore(card, player.node.equips.childNodes[i]);
-								equipped = true;
-								break;
-							}
-						}
-						if (!equipped) {
-							player.node.equips.appendChild(card);
-							if (_status.discarded) {
-								_status.discarded.remove(card);
-							}
-						}
-						return player;
 					};
 
 					lib.element.card.copy = function () {
@@ -10126,7 +10082,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					red: '红色',
 					yellow: '黄色',
 					decade: '十周年',
-					normal:'原版',
+					normal: '原版',
 				},
 				update: function () {
 					if (window.decadeUI) ui.arena.dataset.playerMarkStyle = lib.config['extension_十周年UI_playerMarkStyle'];
@@ -10175,10 +10131,12 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			intro: (function () {
 				var log = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
-					'当前版本：1.2.0.220114.29（Show-K修复版）',
-					'更新日期：2023-08-01',
-					'- 增加单挑先手、后手身份图标（感谢disgrace2013）。',
-					'- 修复了lib.element.player.$damagepop中因使用textContent导致无法解析HTML的异常（举例：神邓艾）。',
+					'当前版本：1.2.0.220114.30（Show-K修复版）',
+					'更新日期：2023-08-16',
+					'- 新增标记样式：原版。（感谢 寰宇星城 的帮助）',
+					'- 修复了因新的装备机制导致的异常。',
+					'- 修复了部分文字方向的异常。',
+					'- 改善了无色牌的观感。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					'<a href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
@@ -10208,10 +10166,10 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 
 				return '<p style="color:rgb(210,210,000); font-size:12px; line-height:14px; text-shadow: 0 0 2px black;">' + log.join('<br>') + '</p>';
 			})(),
-			author: "Show-K←寰宇星城←短歌 QQ464598631\n↑\ndisgrace2013",
+			author: "Show-K←寰宇星城←disgrace2013←短歌 QQ464598631",
 			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
 			forumURL: "https://hub.fgit.ml/Tipx-L/decade-ui/issues",
-			version: "1.2.0.220114.29",
+			version: "1.2.0.220114.30",
 		},
 		files: {
 			"character": [],
