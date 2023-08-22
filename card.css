@@ -138,6 +138,12 @@
 	display: none;
 }
 
+.card.fullborder>.gaintag.info,
+.card.fullimage>.gaintag.info {
+	background-color: rgba(0, 0, 0, 0.8);
+	border-color: white;
+}
+
 /*卡名辅助显示及控制*/
 .card>.name,
 .card.fullskin>.name,
@@ -161,7 +167,7 @@
 .card.fullborder>.name.long,
 .card.fullimage>.name,
 .card.fullimage>.name.long {
-	background-color: black;
+	background-color: rgba(0, 0, 0, 0.8);
 	border-color: white;
 	font-family: shousha;
 }
@@ -221,4 +227,10 @@
 
 .card>.temp-name:empty {
 	display: none;
+}
+
+.card.fullborder>.temp-name,
+.card.fullimage>.temp-name {
+	background-color: rgba(0, 0, 0, 0.8);
+	border-color: white;
 }

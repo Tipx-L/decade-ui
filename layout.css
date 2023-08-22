@@ -388,6 +388,12 @@ body>.background {
 	background: rgba(230, 210, 166, 0.8);
 }
 
+.card.fullborder>.range.card-tag,
+.card.fullimage>.range.card-tag {
+	background-color: rgba(0, 0, 0, 0.8);
+	border-color: white;
+}
+
 .card>.card-mask {
 	opacity: 0;
 	position: absolute;

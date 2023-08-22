@@ -2058,7 +2058,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							if (get.itemtype(result) == 'cards') {
 								player.lose(result, false, 'visible').set('type', 'equip').set('getlx', false).swapEquip = true;
 								if (info.loseThrow) {
-									player.$throw(current);
+									player.$throw(result, 1000);
 								}
 								event.swapped = true;
 							}
@@ -4283,7 +4283,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									intro.innerText = '';
 
 								intro.style.backgroundImage = 'url("' + decadeUIPath + 'assets/image/rarity_' + rarity + '.png")';
-								if ((button.link == 'xushu' || button.link == 'xin_xushu') && button.node && button.node.name && button.node.group) {
+								if ((button.link == 'xushu' || button.link == 'xin_xushu' || button.link == 'jsrg_guanyu') && button.node && button.node.name && button.node.group) {
 									if (button.classList.contains('newstyle')) {
 										button.node.name.dataset.nature = 'watermm';
 										button.node.group.dataset.nature = 'water';
@@ -5026,7 +5026,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 													'diamond': "<span style='color:red;'>♦</span>",
 													'spade': "<span style='color:black;'>♠</span>",
 													'club': "<span style='color:black;'>♣</span>",
-													'none': "<span style='color:white;'>◎</span>"
+													'none': "<span style='color:white;'>◈</span>"
 												};
 												tempname += suitData[cardsuit];
 											}
@@ -9583,6 +9583,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						} else {
 							next.parent = event;
 							_status.event = next;
+							game.getGlobalHistory('everything').push(next);
 						}
 					} else if (event.finished) {
 						if (event._triggered == 1) {
@@ -10115,40 +10116,21 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			}
 		},
 		package: {
-			character: {
-				character: {},
-				translate: {}
-			},
-			card: {
-				card: {},
-				translate: {},
-				list: []
-			},
-			skill: {
-				skill: {},
-				translate: {}
-			},
 			intro: (function () {
 				var log = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
-					'当前版本：1.2.0.220114.30（Show-K修复版）',
-					'更新日期：2023-08-16',
-					'- 新增标记样式：原版。（感谢 寰宇星城 的帮助）',
-					'- 修复了因新的装备机制导致的异常。',
-					'- 修复了部分文字方向的异常。',
-					'- 改善了无色牌的观感。',
+					'当前版本：1.2.0.220114.31（Show-K修复版）',
+					'更新日期：2023-08-22',
+					'- 继续修复了因新的装备机制导致的异常。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					'<a href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
-					'<a href="https://hub.fgit.ml/Tipx-L/decade-ui" target="_blank">FastGit</a>',
 					'最新版下载链接：',
 					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub</a>',
 					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub Proxy</a>',
-					'<a download href="https://hub.fgit.ml/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">FastGit</a>',
 					'最新版（无动态背景和动态皮肤）下载链接：',
 					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub</a>',
 					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub Proxy</a>',
-					'<a download href="https://hub.fgit.ml/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">FastGit</a>',
 					'或者关注微信公众号“无名杀扩展交流”，及时获取《十周年UI》最新版',
 					/*
 					'- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；',
@@ -10168,13 +10150,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			})(),
 			author: "Show-K←寰宇星城←disgrace2013←短歌 QQ464598631",
 			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
-			forumURL: "https://hub.fgit.ml/Tipx-L/decade-ui/issues",
-			version: "1.2.0.220114.30",
-		},
-		files: {
-			"character": [],
-			"card": [],
-			"skill": []
+			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
+			version: "1.2.0.220114.31",
 		},
 		editable: false
 	};

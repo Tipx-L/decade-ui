@@ -198,50 +198,22 @@
 /*其他玩家装备栏*/
 .player>.equips,
 #arena>.player:not(.minskin)>.equips {
-	left: 10%;
-	right: 16%;
-	width: auto;
-	height: 80px;
-	bottom: 3%;
-	box-shadow: none;
 	background: none;
 	background-image: none;
 	border-radius: 0px;
+	bottom: 3%;
+	box-shadow: none;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	justify-content: flex-end;
+	left: 10%;
 	pointer-events: none;
-	z-index: 88;
+	right: 16%;
 	transform: none;
 	transform-origin: center;
-}
-
-.player>.equips>div,
-.player>.equips>.card {
-	position: absolute;
-}
-
-.player>.equips>.card {
-	top: -16px;
-}
-
-.player>.equips>div.equip1 {
-	top: 16px;
-}
-
-.player>.equips>div.equip2 {
-	top: 32px;
-}
-
-.player>.equips>div.equip3,
-.player>.equips>div.equip6 {
-	top: 48px;
-}
-
-.player>.equips>div.equip4 {
-	top: auto;
-	bottom: 0;
-}
-
-.player>.equips>div.equip5 {
-	top: 0;
+	width: auto;
+	z-index: 88;
 }
 
 #arena.decadeUI:not(.long).mobile:not(.oldlayout) .player.unseen:not([data-position="0"]) .equips:not(*:empty),
