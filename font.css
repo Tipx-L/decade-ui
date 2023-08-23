@@ -15,7 +15,7 @@
 /*黄草*/
 @font-face {
 	font-family: 'huangcao';
-	src: local('方正黄草简体'), url('../../font/huangcao.ttf');
+	src: local('方正黄草_GBK'), url('../../font/huangcao.ttf');
 }
 
 /*小篆*/
@@ -33,7 +33,7 @@
 /*新魏*/
 @font-face {
 	font-family: 'xinwei';
-	src: local('华文新魏'), url('../../font/xinwei.ttf');
+	src: local('华文新魏_GBK'), url('../../font/xinwei.ttf');
 }
 
 /*圆隶*/
