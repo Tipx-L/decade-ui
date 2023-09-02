@@ -166,6 +166,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									$dieAfter: lib.element.player.$dieAfter,
 									$skill: lib.element.player.$skill,
 									setSeatNum: lib.element.player.setSeatNum,
+									$syncExpand: lib.element.player.$syncExpand
 								},
 								event: {
 									send: lib.element.event.send,
@@ -2081,7 +2082,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							}, subtype);
 							player.$equip(card);
 							game.addVideo('equip', player, get.cardInfo(card));
-							game.log(player, '装备了', card);
+							if (event.log != false) game.log(player, '装备了', card);
 							if (event.updatePile) game.updateRoundNumber();
 							"step 6"
 							var info = get.info(card, false);
@@ -2099,7 +2100,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									next.player = player;
 									next.card = card;
 								}
-								if (info.equipDelay != 'false') game.delayx();
+								if (info.equipDelay != false) game.delayx();
 							}
 							delete player.equiping;
 							if (event.delay) {
@@ -2290,11 +2291,11 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							} else if (event.animate == 'gain') {
 								game.pause();
 								gainTo(cards);
-								player.$gain(cards);
+								player.$gain(cards, event.log);
 							} else if (event.animate == 'gain2' || event.animate == 'draw2') {
 								game.pause();
 								gainTo(cards);
-								player.$gain2(cards);
+								player.$gain2(cards, event.log);
 							} else if (event.animate == 'give' || event.animate == 'giveAuto') {
 								game.pause();
 								gainTo(cards);
@@ -2302,13 +2303,13 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								if (event.animate == 'give') {
 									for (var i in evtmap) {
 										var source = (_status.connectMode ? lib.playerOL : game.playerMap)[i];
-										source.$give(evtmap[i][0], player)
+										source.$give(evtmap[i][0], player, event.log)
 									}
 								} else {
 									for (var i in evtmap) {
 										var source = (_status.connectMode ? lib.playerOL : game.playerMap)[i];
-										if (evtmap[i][1].length) source.$giveAuto(evtmap[i][1], player);
-										if (evtmap[i][2].length) source.$give(evtmap[i][2], player);
+										if (evtmap[i][1].length) source.$giveAuto(evtmap[i][1], player, event.log);
+										if (evtmap[i][2].length) source.$give(evtmap[i][2], player, event.log);
 									}
 								}
 							} else if (typeof event.animate == 'function') {
@@ -2326,9 +2327,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							} else {
 								gainTo(cards, true);
 								event.finish();
-							}
-							if (event.log) {
-								game.log(player, '获得了', cards);
 							}
 							"step 4"
 							if (event.updatePile) game.updateRoundNumber();
@@ -3442,7 +3440,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (img) {
 											if (img.indexOf('ext:') == 0) {
 												this.setBackgroundImage(img.replace(/ext:/, 'extension/'));
-												this.style.backgroundSize = 'cover';
+												this.style.backgroundSize = 'cover !important';
 											} else {
 												this.setBackgroundDB(img);
 											}
@@ -3479,7 +3477,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (img) {
 											if (img.indexOf('ext:') == 0) {
 												this.node.avatar.setBackgroundImage(img.replace(/ext:/, 'extension/'));
-												this.node.avatar.style.backgroundSize = 'cover';
+												this.node.avatar.style.backgroundSize = 'cover !important';
 											} else {
 												this.node.avatar.setBackgroundDB(img);
 											}
@@ -3504,7 +3502,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (img) {
 											if (img.indexOf('ext:') == 0) {
 												this.setBackgroundImage(img.replace(/ext:/, 'extension/'));
-												this.style.backgroundSize = 'cover';
+												this.style.backgroundSize = 'cover !important';
 											} else {
 												this.setBackgroundDB(img);
 											}
@@ -3933,14 +3931,12 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									game.broadcastAll(function (player, target, name, content, id) {
 										if (player.marks[id]) {
 											player.marks[id].name = name + '_charactermark';
-											player.marks[id]._name = target;
 											player.marks[id].info = {
 												name: name,
 												content: content,
 												id: id
 											};
 											player.marks[id].setBackground(target, 'character');
-											player.marks[id].style.backgroundSize = "cover !important";
 											game.addVideo('changeMarkCharacter', player, {
 												id: id,
 												name: name,
@@ -3953,8 +3949,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 												content: content,
 												id: id
 											});
-											player.marks[id]._name = target;
-											player.marks[id].style.backgroundSize = "cover !important";
 											game.addVideo('markCharacter', player, {
 												name: name,
 												content: content,
@@ -3962,6 +3956,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 												target: target
 											});
 										}
+										player.marks[id]._name = target;
+										player.marks[id].style.setProperty('background-size', 'cover', 'important');
 									}, this, target, name, content, id);
 									return this;
 								},
@@ -4177,6 +4173,11 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (name) decadeUI.effect.skill(player, name, avatar);
 									}, _this, type, name, color, avatar);
 								},
+
+								$syncExpand: function (map) {
+									if (base.lib.element.player.$syncExpand) base.lib.element.player.$syncExpand.apply(this, arguments);
+									ui.equipSolts.back.innerHTML = new Array(5 + Object.values(this.expandedSlots).reduce((previousValue, currentValue) => previousValue + currentValue, 0)).fill('<div></div>').join('');
+								}
 							},
 
 						}
@@ -4283,14 +4284,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									intro.innerText = '';
 
 								intro.style.backgroundImage = 'url("' + decadeUIPath + 'assets/image/rarity_' + rarity + '.png")';
-								if ((button.link == 'xushu' || button.link == 'xin_xushu' || button.link == 'jsrg_guanyu') && button.node && button.node.name && button.node.group) {
-									if (button.classList.contains('newstyle')) {
-										button.node.name.dataset.nature = 'watermm';
-										button.node.group.dataset.nature = 'water';
-									} else {
-										button.node.group.style.backgroundColor = get.translation('weiColor');
-									}
-								}
 							},
 
 							button: function (item, type, position, noclick, node) {
@@ -4314,7 +4307,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									if (_status.noReplaceCharacter) {
 										type = 'character';
 									} else if (lib.characterReplace[item] && lib.characterReplace[item].length) {
-										item = lib.characterReplace[item][0];
+										item = lib.characterReplace[item].randomGet();
 									}
 								}
 
@@ -4366,13 +4359,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										if (lib.config.buttoncharacter_style == 'simple') {
 											node.node.group.style.display = 'none';
 										}
-										node.node.name.dataset.nature = get.groupnature(infoitem[1]);
-										node.node.group.dataset.nature = get.groupnature(infoitem[1], 'raw');
 										node.classList.add('newstyle');
-										if (doubleCamp && doubleCamp.length) {
-											node.node.name.dataset.nature = get.groupnature(doubleCamp[0]);
-											node.node.group.dataset.nature = get.groupnature(doubleCamp[doubleCamp.length == 2 ? 1 : 0]);
-										}
+										node.node.name.dataset.nature = get.groupnature(get.bordergroup(infoitem));
+										node.node.group.dataset.nature = get.groupnature(get.bordergroup(infoitem), 'raw');
 										ui.create.div(node.node.hp);
 										var hp = get.infoHp(infoitem[2]), maxHp = get.infoMaxHp(infoitem[2]), hujia = get.infoHujia(infoitem[2]);
 										var str = get.numStr(hp);
@@ -4426,16 +4415,11 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									if (infoitem[1]) {
 										if (doubleCamp) {
 											var text = '';
-											if (doubleCamp.length == 2) {
-												for (var i = 0; i < doubleCamp.length; i++) text += get.translation(doubleCamp[i]);
-											} else {
-												text = get.translation(doubleCamp[0]);
-											}
-											node.node.group.innerText = text;
-										} else {
-											node.node.group.innerText = get.translation(infoitem[1]);
-										}
-										node.node.group.style.backgroundColor = get.translation(infoitem[1] + 'Color');
+											node.node.group.innerHTML = doubleCamp.reduce((previousValue, currentValue) => `${previousValue}<div data-nature="${get.groupnature(currentValue)}">${get.translation(currentValue)}</div>`, '');
+											if (doubleCamp.length > 4) if (new Set([5, 6, 9]).has(doubleCamp.length)) node.node.group.style.height = '48px';
+											else node.node.group.style.height = '64px';
+										} else node.node.group.innerHTML = `<div>${get.translation(infoitem[1])}</div>`;
+										node.node.group.style.backgroundColor = get.translation(`${get.bordergroup(infoitem)}Color`);
 									} else {
 										node.node.group.style.display = 'none';
 									}
@@ -4893,19 +4877,19 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						}
 
 						return 0;
-					},
+					};
 
-						get.skillState = function (player) {
-							var skills = base.get.skillState.apply(this, arguments);
-							if (game.me != player) {
-								var global = skills.global = skills.global.concat();
-								for (var i = global.length - 1; i >= 0; i--) {
-									if (global[i].indexOf('decadeUI') >= 0) global.splice(i, 1);
-								}
+					get.skillState = function (player) {
+						var skills = base.get.skillState.apply(this, arguments);
+						if (game.me != player) {
+							var global = skills.global = skills.global.concat();
+							for (var i = global.length - 1; i >= 0; i--) {
+								if (global[i].indexOf('decadeUI') >= 0) global.splice(i, 1);
 							}
+						}
 
-							return skills;
-						};
+						return skills;
+					};
 
 
 					game.updateRoundNumber = function () {
@@ -5022,11 +5006,11 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 													cards[i]._tempName.style.color = 'white';
 												}
 												var suitData = {
-													'heart': "<span style='color:red;'>♥</span>",
-													'diamond': "<span style='color:red;'>♦</span>",
-													'spade': "<span style='color:black;'>♠</span>",
-													'club': "<span style='color:black;'>♣</span>",
-													'none': "<span style='color:white;'>◈</span>"
+													'heart': "<span style='color:red;'>" + get.translation('heart') + "</span>",
+													'diamond': "<span style='color:red;'>" + get.translation('diamond') + "</span>",
+													'spade': "<span style='color:black;'>" + get.translation('spade') + "</span>",
+													'club': "<span style='color:black;'>" + get.translation('club') + "</span>",
+													'none': "<span style='color:white;'>" + get.translation('none') + "</span>"
 												};
 												tempname += suitData[cardsuit];
 											}
@@ -6078,10 +6062,11 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							group: {
 								configurable: true,
 								get: function () {
-									return this.node.campWrap.dataset.camp;
+									return this._group;
 								},
 								set: function (value) {
-									this.node.campWrap.dataset.camp = value;
+									this._group = value;
+									this.node.campWrap.dataset.camp = get.bordergroup(this.name);
 
 									if (value) {
 										if (decadeUI.config.campIdentityImageMode) {
@@ -6279,20 +6264,20 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								ui.clear();
 							});
 						}
-					},
+					};
 
-						lib.skill._decadeUI_usecardBegin = {
-							trigger: { global: 'useCardBegin' },
-							forced: true,
-							popup: false,
-							priority: -100,
-							filter: function (event) {
-								return !ui.clear.delay && event.card.name != 'wuxie';
-							},
-							content: function () {
-								ui.clear.delay = 'usecard';
-							}
-						};
+					lib.skill._decadeUI_usecardBegin = {
+						trigger: { global: 'useCardBegin' },
+						forced: true,
+						popup: false,
+						priority: -100,
+						filter: function (event) {
+							return !ui.clear.delay && event.card.name != 'wuxie';
+						},
+						content: function () {
+							ui.clear.delay = 'usecard';
+						}
+					};
 
 					lib.skill._discard = {
 						trigger: { global: ['discardAfter', 'loseToDiscardpileAfter', 'loseAsyncAfter'] },
@@ -6621,8 +6606,10 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								lose_list: event.lose_list,
 							}).setContent('chooseToCompareLose');
 						}
-
 						"step 5"
+						event.trigger('compareCardShowBefore');
+
+						"step 6"
 						// 更新拼点框
 						game.broadcastAll(function (eventName, player, target, playerCard, targetCard) {
 							if (!window.decadeUI) {
@@ -6649,7 +6636,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						event.trigger('compare');
 						decadeUI.delay(400);
 
-						"step 6"
+						"step 7"
 						event.result = {
 							player: event.card1,
 							target: event.card2,
@@ -6704,7 +6691,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						}, str, event.compareName, event.result.bool);
 						decadeUI.delay(1800);
 
-						"step 7"
+						"step 8"
 						if (typeof event.target.ai.shown == 'number' && event.target.ai.shown <= 0.85 && event.addToAI) {
 							event.target.ai.shown += 0.1;
 						}
@@ -6852,6 +6839,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							num1: [],
 							num2: [],
 						};
+						"step 3"
+						event.trigger('compareCardShowBefore');
+						"step 4"
 						game.log(player, '的拼点牌为', event.card1);
 
 						// 更新拼点框
@@ -6862,7 +6852,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							dialog.playerCard = playerCard.copy();
 						}, event.compareName, event.card1);
 
-						"step 3"
+						"step 5"
 						if (event.iwhile < targets.length) {
 							event.target = targets[event.iwhile];
 							// event.target.animate('target');
@@ -6898,9 +6888,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								}, 110, dialog);
 
 							}, event.compareName);
-							event.goto(7);
+							event.goto(9);
 						}
-						"step 4"
+						"step 6"
 						event.result.num1[event.iwhile] = event.num1;
 						event.result.num2[event.iwhile] = event.num2;
 
@@ -6947,7 +6937,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						}, str, event.compareName, result);
 						decadeUI.delay(1800);
 
-						"step 5"
+						"step 7"
 						if (event.callback) {
 							game.broadcastAll(function (card1, card2) {
 								if (!window.decadeUI) {
@@ -6966,10 +6956,10 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							event.compareMultiple = true;
 						}
 
-						"step 6"
+						"step 8"
 						event.iwhile++;
-						event.goto(3);
-						"step 7"
+						event.goto(5);
+						"step 9"
 						game.broadcastAll(ui.clear);
 						event.cards.add(event.card1);
 					};
@@ -10119,18 +10109,23 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			intro: (function () {
 				var log = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
-					'当前版本：1.2.0.220114.31（Show-K修复版）',
-					'更新日期：2023-08-22',
-					'- 继续修复了因新的装备机制导致的异常。',
+					'当前版本：1.2.0.220114.32（Show-K修复版）',
+					'更新日期：2023-09-02',
+					'- 添加【霹雳投石车】和【如意金箍棒】的美化卡牌。（感谢<i>七.</i>的帮助）',
+					'- 根据get.bordergroup支持“身在XX心在X”的效果。',
+					'- 更新扩展装备栏数量时会在视觉上改变空装备栏的数量。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					'<a href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
+					'<a href="https://hub.fgit.cf/Tipx-L/decade-ui" target="_blank">FastGit</a>',
 					'最新版下载链接：',
 					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub</a>',
 					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub Proxy</a>',
+					'<a download href="https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">FastGit</a>',
 					'最新版（无动态背景和动态皮肤）下载链接：',
 					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub</a>',
 					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub Proxy</a>',
+					'<a download href="https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">FastGit</a>',
 					'或者关注微信公众号“无名杀扩展交流”，及时获取《十周年UI》最新版',
 					/*
 					'- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；',
@@ -10151,7 +10146,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			author: "Show-K←寰宇星城←disgrace2013←短歌 QQ464598631",
 			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
 			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
-			version: "1.2.0.220114.31",
+			version: "1.2.0.220114.32",
 		},
 		editable: false
 	};

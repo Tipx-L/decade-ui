@@ -676,8 +676,6 @@
 	align-content: center;
 	justify-content: center;
 	position: relative;
-	padding-top: 3px;
-	padding-bottom: 3px;
 	width: 17px;
 	height: auto;
 	min-height: 16px;
@@ -769,17 +767,17 @@
 }
 
 #arena[data-player-mark-style="decade"]>.player>.dui-marks>.mark>.mark-text {
+	animation: none;
+	background-image: none;
+	border-radius: 9px;
+	box-shadow: none;
+	color: white;
 	display: inline;
-	position: static;
-	border-radius: 0;
-	width: auto;
+	font-size: 11px;
 	height: auto;
 	line-height: 17px;
-	font-size: 11px;
-	color: white;
-	background-image: none;
-	box-shadow: none;
-	animation: none;
+	position: static;
+	width: auto;
 }
 
 #arena[data-player-mark-style="decade"]>.player>.dui-marks>.mark>.mark-text::before {
