@@ -6066,7 +6066,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								},
 								set: function (value) {
 									this._group = value;
-									this.node.campWrap.dataset.camp = get.bordergroup(this.name);
+									this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || value;
 
 									if (value) {
 										if (decadeUI.config.campIdentityImageMode) {
@@ -10109,11 +10109,9 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			intro: (function () {
 				var log = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
-					'当前版本：1.2.0.220114.32（Show-K修复版）',
-					'更新日期：2023-09-02',
-					'- 添加【霹雳投石车】和【如意金箍棒】的美化卡牌。（感谢<i>七.</i>的帮助）',
-					'- 根据get.bordergroup支持“身在XX心在X”的效果。',
-					'- 更新扩展装备栏数量时会在视觉上改变空装备栏的数量。',
+					'当前版本：1.2.0.220114.33（Show-K修复版）',
+					'更新日期：2023-09-05',
+					'- 修复get.bordergroup相关的代码。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					'<a href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
@@ -10146,7 +10144,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			author: "Show-K←寰宇星城←disgrace2013←短歌 QQ464598631",
 			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
 			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
-			version: "1.2.0.220114.32",
+			version: "1.2.0.220114.33",
 		},
 		editable: false
 	};

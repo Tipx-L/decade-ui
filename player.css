@@ -1082,19 +1082,20 @@
 /*玩家身份标记*/
 .player>.identity,
 #arena>.player:not(.minskin)>.identity {
-	left: auto;
-	top: 1px;
-	right: 1px;
-	width: 29px;
-	height: 31px;
-	line-height: 31px;
-	font-size: 31px;
-	background-size: 100% 100%;
-	background-repeat: no-repeat;
 	background-position: center;
-	z-index: 89;
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+	border-radius: initial;
+	font-size: 31px;
+	height: 31px;
+	left: auto;
+	line-height: 31px;
+	right: 1px;
+	top: 1px;
 	transform: none;
 	transition: none;
+	width: 29px;
+	z-index: 89;
 }
 
 .player>.identity[data-color='rYe'] {
