@@ -10058,6 +10058,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 					'- 修复因卡牌归属导致判定牌无法置入弃牌堆的异常（举例：张宝〖咒缚〗）。',
 					'- 移除扩展包内的font.css和menu.js。',
 					'- 适配ui.create.cardTempName。',
+					'- 移除扩展包内的eruda.js，改为引用外部链接。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui', 'https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui'),

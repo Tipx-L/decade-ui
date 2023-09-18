@@ -1080,6 +1080,14 @@
 }
 
 /*玩家身份标记*/
+#bosslist>.player>.identity {
+	height: 100%;
+}
+
+#bosslist>.player>.identity>div {
+	text-align: left;
+}
+
 .player>.identity,
 #arena>.player:not(.minskin)>.identity {
 	background-position: center;
