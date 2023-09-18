@@ -332,19 +332,21 @@ body>.background {
 }
 
 .card>.suit-num {
-	font-size: 25px;
 	color: black;
-	text-align: center;
-	top: 10px;
-	left: 5px;
-	width: 25px;
+	display: flex;
+	flex-direction: column;
+	font-size: 25px;
 	height: auto;
-	line-height: 20px;
-	text-shadow: 0 0 3px #ffffff, 0 0 8px #ffffff;
+	left: 5px;
 	letter-spacing: -1px;
-	transform-origin: 0 0;
-	z-index: 1;
+	line-height: 20px;
+	text-align: center;
+	text-shadow: 0 0 3px #ffffff, 0 0 8px #ffffff;
 	-webkit-text-size-adjust: none;
+	top: 10px;
+	transform-origin: 0 0;
+	width: 25px;
+	z-index: 1;
 }
 
 .dui-mobile .card>.suit-num>.suit {

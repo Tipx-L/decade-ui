@@ -1,30 +1,24 @@
 /*jshint esversion: 6 */
-game.import("extension", function (lib, game, ui, get, ai, _status) {
+'use strict';
+game.import("extension", (lib, game, ui, get, ai, _status) => {
+	const version = '1.2.0.220114.34';
 	return {
-		name: "十周年UI",
-		content: function (config, pack) {
-			'use strict';
-			if (['tafang', 'chess'].contains(get.mode()) && lib.config['extension_十周年UI_closeWhenChess']) {
-				return;
-			}
-			var extensionName = decadeUIName;
-			var extension = lib.extensionMenu['extension_' + extensionName];
-			var extensionPath = lib.assetURL + 'extension/' + extensionName + '/';
+		name: '十周年UI',
+		content: config => {
+			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
+			const extensionName = decadeUIName, extension = lib.extensionMenu[`extension_${extensionName}`], extensionPath = `${lib.assetURL}extension/${extensionName}/`;
 
 
 			if (!(extension && extension.enable && extension.enable.init)) return;
 
-			lib.arenaReady.push(function () {
-				if (ui.roundmenu) {
-					ui.roundmenu.style.zIndex = 8;
-				}
+			lib.arenaReady.push(() => {
+				if (ui.roundmenu) ui.roundmenu.style.zIndex = 8;
 			});
 
 			switch (lib.config.layout) {
 				case 'long2':
 				case 'nova':
-				case 'mobile':
-					break;
+				case 'mobile': break;
 				default:
 					alert('十周年UI提醒您，请使用<默认>、<手杀>、<新版>布局以获得良好体验（在选项-外观-布局中调整）。');
 					break;
@@ -2417,8 +2411,13 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								if (player.getTopCards) cardj = player.getTopCards()[0];
 								else cardj = get.cards()[0];
 							}
-							var nextj = game.cardsGotoOrdering(cardj);
-							if (event.position != ui.discardPile) nextj.noOrdering = true;
+							var owner = get.owner(cardj);
+							if (owner) {
+								owner.lose(cardj, 'visible', ui.ordering);
+							} else {
+								var nextj = game.cardsGotoOrdering(cardj);
+								if (event.position != ui.discardPile) nextj.noOrdering = true;
+							}
 							player.judging.unshift(cardj);
 							game.addVideo('judge1', player, [get.cardInfo(player.judging[0]), judgestr, event.videoId]);
 							game.broadcastAll(function (player, card, str, id, cardid) {
@@ -2983,23 +2982,17 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 							return this._super.bossPhaseLoop.apply(this, arguments);
 						};
 						Game.logv = function (player, card, targets, event, forced, logvid) {
-							var node = ui.create.div('.hidden');
-							node.node = {};
-							logvid = logvid || get.id();
 							if (!player) {
 								player = _status.event.getParent().logvid;
 								if (!player) return;
 							}
-							game.broadcast(function (player, card, targets, event, forced, logvid) {
-								game.logv(player, card, targets, event, forced, logvid);
-							}, player, card, targets, event, forced, logvid);
+							const node = ui.create.div('.hidden');
+							node.node = {};
+							logvid = logvid || get.id();
+							game.broadcast((player, card, targets, event, forced, logvid) => game.logv(player, card, targets, event, forced, logvid), player, card, targets, event, forced, logvid);
 							if (typeof player == 'string') {
-								for (var i = 0; i < ui.historybar.childElementCount; i++) {
-									if (ui.historybar.childNodes[i].logvid == player) {
-										ui.historybar.childNodes[i].added.push(card);
-										break;
-									}
-								}
+								const childNode = Array.from(ui.historybar.childNodes).find(value => value.logvid == player);
+								if (childNode) childNode.added.push(card);
 								return;
 							}
 							if (typeof card == 'string') {
@@ -3007,21 +3000,17 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 									if (lib.skill[card] && lib.skill[card].logv === false && !forced) return;
 									if (!lib.translate[card]) return;
 								}
-								var avatar;
-								if (!player.isUnseen(0)) {
-									avatar = player.node.avatar.cloneNode();
-								} else if (!player.isUnseen(1)) {
-									avatar = player.node.avatar2.cloneNode();
-								} else {
-									return;
-								}
+								let avatar;
+								if (!player.isUnseen(0)) avatar = player.node.avatar.cloneNode();
+								else if (!player.isUnseen(1)) avatar = player.node.avatar2.cloneNode();
+								else return;
 								node.node.avatar = avatar;
 								avatar.style.transform = '';
 								avatar.className = 'avatar';
 								if (card == 'die') {
 									node.dead = true;
 									node.player = player;
-									var avatar2 = avatar.cloneNode();
+									const avatar2 = avatar.cloneNode();
 									avatar2.className = 'avatarbg grayscale1';
 									avatar.appendChild(avatar2);
 									avatar.style.opacity = 0.6;
@@ -3033,27 +3022,22 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								node.appendChild(avatar);
 								if (card == 'die' && targets && targets != player) {
 									node.source = targets;
-									var avatar;
 									player = targets;
-									if (!player.isUnseen(0)) {
-										avatar = player.node.avatar.cloneNode();
-									} else if (!player.isUnseen(1)) {
-										avatar = player.node.avatar2.cloneNode();
-									} else if (get.mode() == 'guozhan' && player.node && player.node.name_seat) {
+									if (!player.isUnseen(0)) avatar = player.node.avatar.cloneNode();
+									else if (!player.isUnseen(1)) avatar = player.node.avatar2.cloneNode();
+									else if (get.mode() == 'guozhan' && player.node && player.node.name_seat) {
 										avatar = ui.create.div('.avatar.cardbg');
 										avatar.innerHTML = player.node.name_seat.innerHTML[0];
-									} else {
-										return;
-									}
+									} else return;
 									avatar.style.transform = '';
 									node.node.avatar2 = avatar;
 									avatar.classList.add('avatar2');
 									node.appendChild(avatar);
 								}
 							} else if (Array.isArray(card)) {
-								node.cards = card[1];
+								node.cards = card[1].slice(0);
 								card = card[0];
-								var info = [card.suit || '', card.number || '', card.name || '', card.nature || ''];
+								const info = [card.suit || '', card.number || '', card.name || '', card.nature || ''];
 								if (!Array.isArray(node.cards) || !node.cards.length) {
 									node.cards = [ui.create.card(node, 'noclick', true).init(info)];
 								}
@@ -3062,54 +3046,46 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										ui.historybar.firstChild.players.push(player);
 										ui.historybar.firstChild.cards.addArray(node.cards);
 										return;
-									} else {
-										node.type = 'wuxie';
-										node.players = [player];
 									}
+									node.type = 'wuxie';
+									node.players = [player];
 								}
-								if (card.copy) {
-									card.copy(node, false);
-								} else {
+								if (card.copy) card.copy(node, false);
+								else {
 									card = ui.create.card(node, 'noclick', true);
 									card.init(info);
 								}
-								var avatar;
-								if (!player.isUnseen(0)) {
-									avatar = player.node.avatar.cloneNode();
-								} else if (!player.isUnseen(1)) {
-									avatar = player.node.avatar2.cloneNode();
-								} else if (get.mode() == 'guozhan' && player.node && player.node.name_seat) {
+								let avatar;
+								if (!player.isUnseen(0)) avatar = player.node.avatar.cloneNode();
+								else if (!player.isUnseen(1)) avatar = player.node.avatar2.cloneNode();
+								else if (get.mode() == 'guozhan' && player.node && player.node.name_seat) {
 									avatar = ui.create.div('.avatar.cardbg');
 									avatar.innerHTML = player.node.name_seat.innerHTML[0];
-								} else {
-									return;
-								}
+								} else return;
 								node.node.avatar = avatar;
 								avatar.style.transform = '';
 								avatar.classList.add('avatar2');
 								node.appendChild(avatar);
 
-								if (targets && targets.length == 1 && targets[0] != player && get.itemtype(targets[0]) == 'player') {
-									(function () {
-										var avatar2;
-										var target = targets[0];
-										if (!target.isUnseen(0)) {
-											avatar2 = target.node.avatar.cloneNode();
-										} else if (!player.isUnseen(1)) {
-											avatar2 = target.node.avatar2.cloneNode();
-										} else if (get.mode() == 'guozhan' && target.node && target.node.name_seat) {
-											avatar2 = ui.create.div('.avatar.cardbg');
-											avatar2.innerHTML = target.node.name_seat.innerHTML[0];
-										} else {
-											return;
-										}
-										node.node.avatar2 = avatar2;
-										avatar2.style.transform = '';
-										avatar2.classList.add('avatar2');
-										avatar2.classList.add('avatar3');
-										node.insertBefore(avatar2, avatar);
-									}());
-								}
+								if (targets && targets.length == 1 && targets[0] != player && get.itemtype(targets[0]) == 'player') (() => {
+									var avatar2;
+									var target = targets[0];
+									if (!target.isUnseen(0)) {
+										avatar2 = target.node.avatar.cloneNode();
+									} else if (!player.isUnseen(1)) {
+										avatar2 = target.node.avatar2.cloneNode();
+									} else if (get.mode() == 'guozhan' && target.node && target.node.name_seat) {
+										avatar2 = ui.create.div('.avatar.cardbg');
+										avatar2.innerHTML = target.node.name_seat.innerHTML[0];
+									} else {
+										return;
+									}
+									node.node.avatar2 = avatar2;
+									avatar2.style.transform = '';
+									avatar2.classList.add('avatar2');
+									avatar2.classList.add('avatar3');
+									node.insertBefore(avatar2, avatar);
+								})();
 							}
 							if (targets && targets.length) {
 								if (targets.length == 1 && targets[0] == player) {
@@ -3119,34 +3095,25 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 								}
 							}
 
-							var bounds = dui.boundsCaches.window;
+							const bounds = dui.boundsCaches.window;
 							bounds.check();
-							var fullheight = bounds.height;
-							var num = Math.round((fullheight - 8) / 50);
-							var margin = (fullheight - 42 * num) / (num + 1);
+							const fullheight = bounds.height, num = Math.round((fullheight - 8) / 50), margin = (fullheight - 42 * num) / (num + 1);
 							node.style.transform = 'scale(0.8)';
 							ui.historybar.insertBefore(node, ui.historybar.firstChild);
 							ui.refresh(node);
 							node.classList.remove('hidden');
-							for (var i = 0; i < ui.historybar.childElementCount; i++) {
-								var current = ui.historybar.childNodes[i];
-								if (i < num) {
-									current.style.transform = 'scale(1) translateY(' + (margin + i * (42 + margin) - 4) + 'px)';
-								} else {
-									if (!current.removetimeout) {
-										current.style.opacity = 0;
-										current.style.transform = 'scale(1) translateY(' + fullheight + 'px)';
-										current.removetimeout = setTimeout((function (current) {
-											return function () {
-												current.remove();
-											};
-										}(current)), 500);
-									}
+							Array.from(ui.historybar.childNodes).forEach((value, index) => {
+								if (index < num) {
+									value.style.transform = `scale(1) translateY(${margin + index * (42 + margin) - 4}px)`;
+									return;
 								}
-							}
-							if (lib.config.touchscreen) {
-								node.addEventListener('touchstart', ui.click.intro);
-							} else {
+								if (value.removetimeout) return;
+								value.style.opacity = 0;
+								value.style.transform = `scale(1) translateY(${fullheight}px)`;
+								value.removetimeout = setTimeout((current => () => current.remove())(value), 500);
+							});
+							if (lib.config.touchscreen) node.addEventListener('touchstart', ui.click.intro);
+							else {
 								// node.addEventListener('mouseenter',ui.click.intro);
 								node.addEventListener(lib.config.pop_logv ? 'mousemove' : 'click', ui.click.logv);
 								node.addEventListener('mouseleave', ui.click.logvleave);
@@ -4275,6 +4242,45 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 						},
 
 						create: {
+							cardTempName: (card, applyNode) => {
+								const getApplyNode = applyNode || card;
+								const cardName = get.name(card);
+								const cardNature = get.nature(card);
+								const cardNumber = get.number(card);
+								const cardSuit = get.suit(card);
+								const node = getApplyNode._tempName || ui.create.div('.temp-name', getApplyNode);
+								getApplyNode._tempName = node;
+								let tempname = '';
+								if (card.suit != cardSuit) {
+									if (cardSuit == 'none') {
+										node.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+										node.style.color = 'white';
+									}
+									const span = document.createElement('span');
+									for (const color in lib.color) {
+										if (!lib.color[color].includes(cardSuit)) continue;
+										span.style.color = color == 'none' ? 'white' : color;
+										break;
+									}
+									span.textContent = get.translation(cardSuit);
+									tempname += span.outerHTML;
+								}
+								if (card.number != cardNumber) {
+									const b = document.createElement('b');
+									b.textContent = cardNumber;
+									tempname += b.outerHTML;
+								}
+								if (card.name != cardName || card.nature != cardNature) {
+									if (cardNature) {
+										node.dataset.nature = cardNature;
+										if (cardName == 'sha') tempname += get.translation(cardNature);
+									}
+									tempname += get.translation(cardName);
+								}
+
+								node.innerHTML = tempname;
+								node.tempname = tempname;
+							},
 							rarity: function (button) {
 								var rarity = game.getRarity(button.link);
 								var intro = button.node.intro;
@@ -4354,7 +4360,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										}
 									}
 
-									node.node.name.innerText = get.slimName(item).replace(/<br>/g, '\n');
+									node.node.name.innerHTML = get.slimName(item).replace(/<br>/g, '\n');
 									if (lib.config.buttoncharacter_style == 'default' || lib.config.buttoncharacter_style == 'simple') {
 										if (lib.config.buttoncharacter_style == 'simple') {
 											node.node.group.style.display = 'none';
@@ -4892,15 +4898,13 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					};
 
 
-					game.updateRoundNumber = function () {
-						game.broadcastAll(function (num1, num2, top) {
-							_status.pileTop = top;
+					game.updateRoundNumber = () => {
+						base.game.updateRoundNumber();
+						game.broadcastAll((num1, num2) => {
 							if (ui.cardPileNumber && window.decadeUI)
-								ui.cardPileNumber.textContent = '牌堆' + num2 + ' 第' + num1 + '轮';
-							else if (ui.cardPileNumber)
-								ui.cardPileNumber.textContent = num1 + '轮 剩余牌: ' + num2;
+								ui.cardPileNumber.textContent = `牌堆${num2} 第${num1}轮`;
 
-						}, game.roundNumber, ui.cardPile.childNodes.length, ui.cardPile.firstChild);
+						}, game.roundNumber, ui.cardPile.childNodes.length);
 					};
 
 					game.check = function (event) {
@@ -4997,40 +5001,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 										var cardnature = get.nature(cards[i]);
 										var cardsuit = get.suit(cards[i]);
 										var cardnumber = get.number(cards[i]);
-										if ((cards[i].name != cardname) || (cards[i].nature != cardnature) || (cards[i].suit != cardsuit) || (cards[i].number != cardnumber)) {
-											if (!cards[i]._tempName) cards[i]._tempName = ui.create.div('.temp-name', cards[i]);
-											var tempname = '';
-											if (cards[i].suit != cardsuit) {
-												if (cardsuit == 'none') {
-													cards[i]._tempName.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-													cards[i]._tempName.style.color = 'white';
-												}
-												var suitData = {
-													'heart': "<span style='color:red;'>" + get.translation('heart') + "</span>",
-													'diamond': "<span style='color:red;'>" + get.translation('diamond') + "</span>",
-													'spade': "<span style='color:black;'>" + get.translation('spade') + "</span>",
-													'club': "<span style='color:black;'>" + get.translation('club') + "</span>",
-													'none': "<span style='color:white;'>" + get.translation('none') + "</span>"
-												};
-												tempname += suitData[cardsuit];
-											}
-											if (cards[i].number != cardnumber) {
-												tempname += "<b>" + cardnumber + "</b>";
-											}
-											if ((cards[i].name != cardname) || (cards[i].nature != cardnature)) {
-												var tempname2 = get.translation(cardname);
-												if (cardnature) {
-													cards[i]._tempName.dataset.nature = cardnature;
-													if (cardname == 'sha') {
-														tempname2 = get.translation(cardnature) + tempname2;
-													}
-												}
-												tempname += tempname2;
-											}
-
-											cards[i]._tempName.innerHTML = tempname;
-											cards[i]._tempName.tempname = tempname;
-										}
+										if ((cards[i].name != cardname) || (cards[i].nature != cardnature) || (cards[i].suit != cardsuit) || (cards[i].number != cardnumber)) ui.create.cardTempName(cards[i]);
 									}
 
 									var nochess = true;
@@ -6149,7 +6120,6 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 
 						card.$suitnum.$num = decadeUI.element.create(null, card.$suitnum, 'span');
 						card.$suitnum.$num.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
-						card.$suitnum.$br = decadeUI.element.create(null, card.$suitnum, 'br');
 						card.$suitnum.$suit = decadeUI.element.create('suit', card.$suitnum, 'span');
 						card.$suitnum.$suit.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
 						card.$equip.$suitnum = decadeUI.element.create(null, card.$equip, 'span');
@@ -9701,101 +9671,81 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 
 
 			decadeUI.config = config;
-			duicfg.update = function () {
-				var menu = lib.extensionMenu['extension_' + extensionName];
-				for (var key in menu) {
-					if (menu[key] && (typeof menu[key] == 'object')) {
-						if (typeof menu[key].update == 'function') {
-							menu[key].update();
-						}
-					}
-				}
-			};
+			duicfg.update = () => Object.values(lib.extensionMenu[`extension_${extensionName}`]).forEach(value => {
+				if (value && typeof value == 'object' && typeof value.update == 'function') value.update();
+			});
 
 			decadeUI.init();
 			console.timeEnd(extensionName);
 		},
-		precontent: function () {
+		precontent: () => {
+			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
 			lib.decade_isXingchengVersion = true;
-			if (['tafang', 'chess'].contains(get.mode()) && lib.config['extension_十周年UI_closeWhenChess']) {
-				return;
-			}
+			lib.decade_isShowKVersion = true;
 			window.decadeUIName = '十周年UI';
-			window.decadeUIPath = lib.assetURL + 'extension/' + decadeUIName + '/';
-			if (lib.config['extension_' + decadeUIName + '_eruda']) {
-				var script = document.createElement('script');
-				script.src = decadeUIPath + 'eruda.js';
+			window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`;
+			if (lib.config[`extension_${decadeUIName}_eruda`]) {
+				const script = document.createElement('script');
+				script.src = 'https://npm.onmicrosoft.cn/eruda/eruda.js';
 				document.body.appendChild(script);
-				script.onload = function () { eruda.init(); };
+				script.onload = () => eruda.init();
 			}
 
-			var extension = lib.extensionMenu['extension_' + decadeUIName];
-			if (!(extension && extension.enable && extension.enable.init))
-				return;
+			const extension = lib.extensionMenu[`extension_${decadeUIName}`];
+			if (!(extension && extension.enable && extension.enable.init)) return;
 
-			if (window.require) {
-				if (!window.fs)
-					window.fs = require('fs');
-			}
+			if (window.require && !window.fs) window.fs = require('fs');
 
-			lib.configMenu.appearence.config.layout.visualMenu = function (node, link) {
-				node.className = 'button character themebutton ' + lib.config.theme;
+			lib.configMenu.appearence.config.layout.visualMenu = (node, link) => {
+				node.className = `button character themebutton ${lib.config.theme}`;
 				node.classList.add(link);
-				if (!node.created) {
-					node.created = true;
-					node.style.overflow = 'scroll';
+				if (node.created) return;
+				node.created = true;
+				node.style.overflow = 'scroll';
 
-					var list = ['re_caocao', 're_liubei', 'sp_zhangjiao', 'sunquan'];
-					for (var i = 0; i < 4; i++) {
-						var player = ui.create.div('.seat-player.fakeplayer', node);
-						ui.create.div('.avatar', player).setBackground(list.randomRemove(), 'character');
-					}
+				const list = ['re_caocao', 're_liubei', 'sp_zhangjiao', 'sunquan'];
+				while (list.length) {
+					ui.create.div('.avatar', ui.create.div('.seat-player.fakeplayer', node)).setBackground(list.randomRemove(), 'character');
 				}
 			};
 
-			var decadePack = this;
-			window.decadeModule = (function (decadeModule) {
-				if (ui.css.layout) {
-					if (!ui.css.layout.href || ui.css.layout.href.indexOf('long2') < 0)
-						ui.css.layout.href = lib.assetURL + 'layout/long2/layout.css';
-				}
+			window.decadeModule = function (decadeModule) {
+				if (ui.css.layout && (!ui.css.layout.href || ui.css.layout.href.indexOf('long2') < 0)) ui.css.layout.href = `${lib.assetURL}layout/long2/layout.css`;
 
 				decadeModule.init = function () {
-					this.css(decadeUIPath + 'layout.css');
-					this.css(decadeUIPath + 'decadeLayout.css');
-					this.css(decadeUIPath + 'player.css');
+					this.css(`${decadeUIPath}layout.css`);
+					this.css(`${decadeUIPath}decadeLayout.css`);
+					this.css(`${decadeUIPath}player.css`);
 
-					this.js(decadeUIPath + 'spine.js');
-					this.js(decadeUIPath + 'component.js');
-					this.js(decadeUIPath + 'skill.js');
-					this.js(decadeUIPath + 'content.js');
-					this.js(decadeUIPath + 'effect.js');
-					this.js(decadeUIPath + 'animation.js');
-					this.js(decadeUIPath + 'dynamicSkin.js');
-					this.js(decadeUIPath + 'menu.js');
+					this.js(`${decadeUIPath}spine.js`);
+					this.js(`${decadeUIPath}component.js`);
+					this.js(`${decadeUIPath}skill.js`);
+					this.js(`${decadeUIPath}content.js`);
+					this.js(`${decadeUIPath}effect.js`);
+					this.js(`${decadeUIPath}animation.js`);
+					this.js(`${decadeUIPath}dynamicSkin.js`);
 					return this;
 				};
 				decadeModule.js = function (path) {
 					if (!path) return console.error('path');
 
-					var _this = this;
-					var script = document.createElement('script');
+					const script = document.createElement('script');
 					script.onload = function () {
 						this.remove();
 					};
 					script.onerror = function () {
 						this.remove();
-						console.error(this.src + 'not found');
+						console.error(`${this.src}not found`);
 					};
-					script.src = path + '?v=' + decadePack.package.version;
+					script.src = `${path}?v=${version}`;
 					document.head.appendChild(script);
 					return script;
 				};
 				decadeModule.css = function (path) {
 					if (!path) return console.error('path');
-					var link = document.createElement('link');
+					const link = document.createElement('link');
 					link.rel = 'stylesheet';
-					link.href = path + '?v=' + decadePack.package.version;
+					link.href = `${path}?v=${version}`;
 					document.head.appendChild(link);
 					return link;
 				};
@@ -9805,7 +9755,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					this.modules.push(module);
 				};
 				return decadeModule.init();
-			})({})
+			}({});
 
 			Object.defineProperties(_status, {
 				connectMode: {
@@ -9815,34 +9765,25 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					},
 					set: function (value) {
 						this._connectMode = value;
-						if (value && lib.extensions) {
-							var decadeExtension;
-							var startBeforeFunction = lib.init.startBefore;
+						if (!value || !lib.extensions) return;
+						const decadeExtension = lib.extensions.find(value => value[0] == decadeUIName);
+						if (!decadeExtension) return;
 
-							for (var i = 0; i < lib.extensions.length; i++) {
-								if (lib.extensions[i][0] == decadeUIName) {
-									decadeExtension = lib.extensions[i];
-									break;
-								}
+						const startBeforeFunction = lib.init.startBefore;
+						lib.init.startBefore = function () {
+							try {
+								_status.extension = decadeExtension[0];
+								_status.evaluatingExtension = decadeExtension[3];
+								decadeExtension[1](decadeExtension[2], decadeExtension[4]);
+								delete _status.extension;
+								delete _status.evaluatingExtension;
+								console.log(`%c${decadeUIName}: 联机成功`, 'color:blue');
+							} catch (e) {
+								console.log(e);
 							}
 
-							if (!decadeExtension) return;
-
-							lib.init.startBefore = function () {
-								try {
-									_status.extension = decadeExtension[0];
-									_status.evaluatingExtension = decadeExtension[3];
-									decadeExtension[1](decadeExtension[2], decadeExtension[4]);
-									delete _status.extension;
-									delete _status.evaluatingExtension;
-									console.log('%c' + decadeUIName + ': 联机成功', 'color:blue');
-								} catch (e) {
-									console.log(e);
-								}
-
-								if (startBeforeFunction) startBeforeFunction.apply(this, arguments);
-							};
-						}
+							if (startBeforeFunction) startBeforeFunction.apply(this, arguments);
+						};
 					}
 				},
 				_connectMode: {
@@ -9851,7 +9792,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 				}
 			});
 
-		}, help: {},
+		},
 		config: {
 			eruda: {
 				name: '调试助手(开发用)',
@@ -9864,8 +9805,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			rightLayout: {
 				name: '右手布局',
 				init: false,
-				update: function () {
-					if (window.decadeUI) ui.arena.dataset.rightLayout = lib.config['extension_十周年UI_rightLayout'] ? 'on' : 'off';
+				update: () => {
+					if (window.decadeUI) ui.arena.dataset.rightLayout = lib.config.extension_十周年UI_rightLayout ? 'on' : 'off';
 				}
 			},
 			cardPrettify: {
@@ -9942,18 +9883,13 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					skin_zhouyi_剑舞浏漓: '周　夷-剑舞浏漓',
 					skin_zhangxingcai_凯旋星花: '张星彩-凯旋星花',
 				},
-				update: function () {
+				update: () => {
 					if (!window.decadeUI) return;
 
-					var item = lib.config['extension_十周年UI_dynamicBackground'];
-					if (!item || item == 'off') {
-						decadeUI.backgroundAnimation.stopSpineAll();
-					} else {
-						var name = item.split('_');
-						var skin = name.splice(name.length - 1, 1)[0]
-						name = name.join('_')
-						decadeUI.backgroundAnimation.play(name, skin);
-					}
+					const item = lib.config.extension_十周年UI_dynamicBackground;
+					if (!item || item == 'off') return decadeUI.backgroundAnimation.stopSpineAll();
+					const name = item.split('_'), skin = name.splice(name.length - 1, 1)[0];
+					decadeUI.backgroundAnimation.play(name.join('_'), skin);
 				}
 			},
 			dynamicSkin: {
@@ -9963,19 +9899,17 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			dynamicSkinOutcrop: {
 				name: '动皮露头',
 				init: true,
-				update: function () {
-					if (window.decadeUI) {
-						var enable = lib.config['extension_十周年UI_dynamicSkinOutcrop'];
-						ui.arena.dataset.dynamicSkinOutcrop = enable ? 'on' : 'off';
-						var players = game.players;
-						if (!players) return;
-						for (var i = 0; i < players.length; i++) {
-							if (players[i].dynamic) {
-								players[i].dynamic.outcropMask = enable;
-								players[i].dynamic.update(false);
-							}
-						}
-					}
+				update: () => {
+					if (!window.decadeUI) return;
+					const enable = lib.config.extension_十周年UI_dynamicSkinOutcrop;
+					ui.arena.dataset.dynamicSkinOutcrop = enable ? 'on' : 'off';
+					const players = game.players;
+					if (!players) return;
+					players.forEach(value => {
+						if (!value.dynamic) return;
+						value.dynamic.outcropMask = enable;
+						value.dynamic.update(false);
+					});
 				}
 			},
 			showJieMark: {
@@ -9985,8 +9919,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			cardAlternateNameVisible: {
 				name: '牌名辅助显示',
 				init: false,
-				update: function () {
-					if (window.decadeUI) ui.window.dataset.cardAlternateNameVisible = lib.config['extension_十周年UI_cardAlternateNameVisible'] ? 'on' : 'off';
+				update: () => {
+					if (window.decadeUI) ui.window.dataset.cardAlternateNameVisible = lib.config.extension_十周年UI_cardAlternateNameVisible ? 'on' : 'off';
 				}
 			},
 			campIdentityImageMode: {
@@ -9996,7 +9930,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			playerKillEffect: {
 				name: '玩家击杀特效',
 				init: true,
-				onclick: function (value) {
+				onclick: value => {
 					game.saveConfig('extension_十周年UI_playerKillEffect', value);
 					if (window.decadeUI) decadeUI.config.playerKillEffect = value;
 				},
@@ -10008,7 +9942,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			playerDieEffect: {
 				name: '玩家阵亡特效',
 				init: true,
-				onclick: function (value) {
+				onclick: value => {
 					game.saveConfig('extension_十周年UI_playerDieEffect', value);
 					if (window.decadeUI) decadeUI.config.playerDieEffect = value;
 				},
@@ -10016,7 +9950,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			cardUseEffect: {
 				name: '卡牌使用特效',
 				init: true,
-				onclick: function (value) {
+				onclick: value => {
 					game.saveConfig('extension_十周年UI_cardUseEffect', value);
 					if (window.decadeUI) decadeUI.config.cardUseEffect = value;
 				},
@@ -10024,7 +9958,7 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			playerLineEffect: {
 				name: '玩家指示线特效',
 				init: true,
-				onclick: function (value) {
+				onclick: value => {
 					game.saveConfig('extension_十周年UI_playerLineEffect', value);
 					if (window.decadeUI) decadeUI.config.playerLineEffect = value;
 				},
@@ -10032,8 +9966,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 			outcropSkin: {
 				name: '露头皮肤(需对应素材)',
 				init: false,
-				update: function () {
-					if (window.decadeUI) ui.arena.dataset.outcropSkin = lib.config['extension_十周年UI_outcropSkin'] ? 'on' : 'off';
+				update: () => {
+					if (window.decadeUI) ui.arena.dataset.outcropSkin = lib.config.extension_十周年UI_outcropSkin ? 'on' : 'off';
 				}
 			},
 			borderLevel: {
@@ -10046,8 +9980,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					four: '四阶',
 					five: '五阶',
 				},
-				update: function () {
-					if (window.decadeUI) ui.arena.dataset.borderLevel = lib.config['extension_十周年UI_borderLevel'];
+				update: () => {
+					if (window.decadeUI) ui.arena.dataset.borderLevel = lib.config.extension_十周年UI_borderLevel;
 				}
 			},
 			gainSkillsVisible: {
@@ -10058,8 +9992,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					off: '不显示',
 					othersOn: '显示他人',
 				},
-				update: function () {
-					if (window.decadeUI) ui.arena.dataset.gainSkillsVisible = lib.config['extension_十周年UI_gainSkillsVisible'];
+				update: () => {
+					if (window.decadeUI) ui.arena.dataset.gainSkillsVisible = lib.config.extension_十周年UI_gainSkillsVisible;
 				}
 			},
 			playerMarkStyle: {
@@ -10071,8 +10005,8 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					decade: '十周年',
 					normal: '原版',
 				},
-				update: function () {
-					if (window.decadeUI) ui.arena.dataset.playerMarkStyle = lib.config['extension_十周年UI_playerMarkStyle'];
+				update: () => {
+					if (window.decadeUI) ui.arena.dataset.playerMarkStyle = lib.config.extension_十周年UI_playerMarkStyle;
 				}
 			},
 			closeWhenChess: {
@@ -10096,30 +10030,46 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					'90': '90',
 					'cardWidth': '卡牌宽度'
 				},
-				update: function () {
+				update: () => {
 					if (window.decadeUI) decadeUI.layout.updateHand();
 				}
 			}
 		},
 		package: {
-			intro: (function () {
-				var log = [
+			intro: (() => {
+				const p = document.createElement("p"), style = p.style;
+				style.color = 'rgb(210, 210, 000)';
+				style.fontSize = '12px';
+				style.lineHeight = '14px';
+				style.textShadow = '0 0 2px black';
+				const generateAHTML = (href, innerHTML, download) => {
+					const a = document.createElement('a');
+					if (download) a.download = true;
+					a.href = href;
+					a.innerHTML = innerHTML;
+					a.target = '_blank';
+					return a.outerHTML;
+				};
+				p.innerHTML = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
-					'当前版本：1.2.0.220114.33（Show-K修复版）',
-					'更新日期：2023-09-05',
-					'- 修复get.bordergroup相关的代码。',
+					`当前版本：${version}（Show-K修复版）`,
+					'更新日期：2023-09-18',
+					'- 互联网记录着一切。',
+					'- 修复因卡牌归属导致判定牌无法置入弃牌堆的异常（举例：张宝〖咒缚〗）。',
+					'- 移除扩展包内的font.css和menu.js。',
+					'- 适配ui.create.cardTempName。',
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
-					'<a href="https://github.com/Tipx-L/decade-ui" target="_blank">https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui</a>',
-					'<a href="https://hub.fgit.cf/Tipx-L/decade-ui" target="_blank">FastGit</a>',
+					generateAHTML('https://github.com/Tipx-L/decade-ui', 'https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui'),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui', 'FastGit'),
 					'最新版下载链接：',
-					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub</a>',
-					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">GitHub Proxy</a>',
-					'<a download href="https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip" target="_blank">FastGit</a>',
+					generateAHTML('https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub', true),
+					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub Proxy', true),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'FastGit', true),
 					'最新版（无动态背景和动态皮肤）下载链接：',
-					'<a download href="https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub</a>',
-					'<a download href="https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">GitHub Proxy</a>',
-					'<a download href="https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip" target="_blank">FastGit</a>',
+					generateAHTML('https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'GitHub', true),
+					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'GitHub Proxy', true),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'FastGit', true),
 					'或者关注微信公众号“无名杀扩展交流”，及时获取《十周年UI》最新版',
 					/*
 					'- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；',
@@ -10133,14 +10083,13 @@ game.import("extension", function (lib, game, ui, get, ai, _status) {
 					'- 修复挑战模式下动皮异常拉伸的问题；',
 					'- 修复了加载其他目录的特效文件问题；',
 					'- 修复低版本窗口改动后动皮模糊问题；'*/
-				];
-
-				return '<p style="color:rgb(210,210,000); font-size:12px; line-height:14px; text-shadow: 0 0 2px black;">' + log.join('<br>') + '</p>';
+				].join(document.createElement('br').outerHTML);
+				return p.outerHTML;
 			})(),
-			author: "Show-K←寰宇星城←disgrace2013←短歌 QQ464598631",
-			diskURL: "https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip",
-			forumURL: "https://github.com/Tipx-L/decade-ui/issues",
-			version: "1.2.0.220114.33",
+			author: 'Show-K←寰宇星城←disgrace2013←短歌 QQ464598631',
+			diskURL: 'https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip',
+			forumURL: 'https://github.com/Tipx-L/decade-ui/issues',
+			version: version,
 		},
 		editable: false
 	};
