@@ -1,9 +1,9 @@
 /*jshint esversion: 6 */
 'use strict';
-game.import("extension", (lib, game, ui, get, ai, _status) => {
+game.import('extension', (lib, game, ui, get, ai, _status) => {
 	const version = '1.2.0.220114.34';
 	return {
-		name: '十周年UI',
+		name: "十周年UI",
 		content: config => {
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
 			const extensionName = decadeUIName, extension = lib.extensionMenu[`extension_${extensionName}`], extensionPath = `${lib.assetURL}extension/${extensionName}/`;
@@ -4936,7 +4936,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 								if (event.filterButton(dialog.buttons[i], player) && lib.filter.buttonIncluded(dialog.buttons[i])) {
 									if (ui.selected.buttons.length < range[1]) {
 										dialog.buttons[i].classList.add('selectable');
-									} else if (range[1] == -1) {
+									} else if (range[1] <= -1) {
 										dialog.buttons[i].classList.add('selected');
 										ui.selected.buttons.add(dialog.buttons[i]);
 									} else {
@@ -4944,7 +4944,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 									}
 								} else {
 									dialog.buttons[i].classList.remove('selectable');
-									if (range[1] == -1) {
+									if (range[1] <= -1) {
 										dialog.buttons[i].classList.remove('selected');
 										ui.selected.buttons.remove(dialog.buttons[i]);
 									}
@@ -5022,7 +5022,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 											if (event._cardChoice && firstCheck) {
 												event._cardChoice.push(cards[i]);
 											}
-										} else if (range[1] == -1) {
+										} else if (range[1] <= -1) {
 											cards[i].classList.add('selected');
 											cards[i].updateTransform(true);
 											ui.selected.cards.add(cards[i]);
@@ -5031,7 +5031,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 										}
 									} else {
 										cards[i].classList.remove('selectable');
-										if (range[1] == -1) {
+										if (range[1] <= -1) {
 											cards[i].classList.remove('selected');
 											cards[i].updateTransform();
 											ui.selected.cards.remove(cards[i]);
@@ -5082,7 +5082,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 											if (Array.isArray(event._targetChoice)) {
 												event._targetChoice.push(players[i]);
 											}
-										} else if (range[1] == -1) {
+										} else if (range[1] <= -1) {
 											players[i].classList.add('selected');
 											ui.selected.targets.add(players[i]);
 										} else {
@@ -5090,7 +5090,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 										}
 									} else {
 										players[i].classList.remove('selectable');
-										if (range[1] == -1) {
+										if (range[1] <= -1) {
 											players[i].classList.remove('selected');
 											ui.selected.targets.remove(players[i]);
 										}
@@ -5126,7 +5126,7 @@ game.import("extension", (lib, game, ui, get, ai, _status) => {
 										ok = false;
 									}
 								}
-								if (range[1] == -1 && ui.selected.targets.length == 0 && event.targetRequired) {
+								if (range[1] <= -1 && ui.selected.targets.length == 0 && event.targetRequired) {
 									ok = false;
 								}
 							}
