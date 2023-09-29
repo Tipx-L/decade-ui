@@ -9039,7 +9039,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					tip.appendText = function (text, type) {
 						if (text == undefined || text === '')
 							return;
-						text = text.replace(/^###[\s\S]*###/, "");
+						text = String(text).replace(/^###[\s\S]*###/, "");
 						if (type == undefined)
 							type = '';
 
