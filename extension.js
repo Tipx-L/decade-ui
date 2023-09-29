@@ -1,7 +1,15 @@
 /*jshint esversion: 6 */
 'use strict';
 game.import('extension', (lib, game, ui, get, ai, _status) => {
-	const version = '1.2.0.220114.34';
+	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`;
+	let versionMD;
+	try {
+		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).split(/\r\n|\r|\n/);
+	}
+	catch (ignored) {
+		versionMD = ["", ""];
+	}
+	const version = versionMD[0], updateDate = versionMD[1];
 	return {
 		name: "十周年UI",
 		content: config => {
@@ -9447,8 +9455,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
 			lib.decade_isXingchengVersion = true;
 			lib.decade_isShowKVersion = true;
-			window.decadeUIName = '十周年UI';
-			window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`;
 			if (lib.config[`extension_${decadeUIName}_eruda`]) {
 				const script = document.createElement('script');
 				script.src = 'https://npm.onmicrosoft.cn/eruda/eruda.js';
@@ -9802,7 +9808,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			}
 		},
 		package: {
-			intro: (() => {
+			get intro() {
 				const p = document.createElement("p"), style = p.style;
 				style.color = 'rgb(210, 210, 000)';
 				style.fontSize = '12px';
@@ -9816,15 +9822,18 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					a.target = '_blank';
 					return a.outerHTML;
 				};
+				let changelog;
+				try {
+					changelog = lib.init.reqSync(`local:${decadeUIPath}CHANGELOG.md`).split(/\r\n|\r|\n/);
+				}
+				catch (ignored) {
+					changelog = [];
+				}
 				p.innerHTML = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
 					`当前版本：${version}（Show-K修复版）`,
-					'更新日期：2023-09-18',
-					'- 互联网记录着一切。',
-					'- 修复因卡牌归属导致判定牌无法置入弃牌堆的异常（举例：张宝〖咒缚〗）。',
-					'- 移除扩展包内的font.css和menu.js。',
-					'- 适配ui.create.cardTempName。',
-					'- 移除扩展包内的eruda.js，改为引用外部链接。',
+					`更新日期：${updateDate}`,
+					...changelog,
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui', 'https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui'),
@@ -9852,7 +9861,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					'- 修复低版本窗口改动后动皮模糊问题；'*/
 				].join(document.createElement('br').outerHTML);
 				return p.outerHTML;
-			})(),
+			},
 			author: 'Show-K←寰宇星城←disgrace2013←短歌 QQ464598631',
 			diskURL: 'https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip',
 			forumURL: 'https://github.com/Tipx-L/decade-ui/issues',
