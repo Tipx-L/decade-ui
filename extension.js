@@ -1,7 +1,20 @@
 /*jshint esversion: 6 */
 'use strict';
 game.import('extension', (lib, game, ui, get, ai, _status) => {
-	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`;
+	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
+		/**
+		 * @param {string} method
+		 * @param {RegExp} at
+		 * @param {Function?} callback
+		 */
+		redirect(method, at, callback) {
+			/**
+			 * @type {string}
+			 */
+			const redirectingMethod = eval(`${method}.toString();`);
+			eval(`${method} = ${redirectingMethod.replace(at, callback && `\n${callback.toString().replace(/^\W*(function[^{]+\{([\s\S]*)\}|[^=]+=>[^{]*\{([\s\S]*)\}|[^=]+=>\s*([\s\S]*))/i, '$2$3$4').trim()}` || '')}`);
+		}
+	};
 	let versionMD;
 	try {
 		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).split(/\r\n|\r|\n/);
@@ -10,6 +23,17 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 		versionMD = ["", ""];
 	}
 	const version = versionMD[0], updateDate = versionMD[1];
+	/**
+	 * Insert line break opportunities into a URL.
+	 * @param {string} url The URL.
+	 */
+	const formatURL = url => url
+		.split("//")
+		.map(subURL => subURL
+			.replace(/(?<after>:)/giu, "$1<wbr>")
+			.replace(/(?<before>[/~.,\-_?#%])/giu, "<wbr>$1")
+			.replace(/(?<beforeAndAfter>[=&])/giu, "<wbr>$1<wbr>"))
+		.join("//<wbr>");
 	return {
 		name: "十周年UI",
 		content: config => {
@@ -3181,69 +3205,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					ride.lib = {
 						element: {
 							dialog: {
-								add: function (item, noclick, zoom) {
-									if (typeof item == 'string') {
-										if (item.indexOf('###') == 0) {
-											var items = item.slice(3).split('###');
-											this.add(items[0], noclick, zoom);
-											this.addText(items[1], items[1].length <= 20, zoom);
-										} else if (noclick) {
-											var strstr = item;
-											item = ui.create.div('', this.content);
-											item.innerHTML = strstr;
-										} else {
-											item = ui.create.caption(item, this.content);
-										}
-									} else if (get.objtype(item) == 'div') {
-										this.content.appendChild(item);
-									} else if (get.itemtype(item) == 'cards') {
-										var buttons = ui.create.div('.buttons', this.content);
-										if (zoom) buttons.classList.add('smallzoom');
-										this.buttons = this.buttons.concat(ui.create.buttons(item, 'card', buttons, noclick));
-									} else if (get.itemtype(item) == 'players') {
-										var buttons = ui.create.div('.buttons', this.content);
-										if (zoom) buttons.classList.add('smallzoom');
-										this.buttons = this.buttons.concat(ui.create.buttons(item, 'player', buttons, noclick));
-									} else if (item[1] == 'textbutton') {
-										ui.create.textbuttons(item[0], this, noclick);
-									} else {
-										var buttons = ui.create.div('.buttons', this.content);
-										if (zoom) buttons.classList.add('smallzoom');
-
-										if (item[1] && item[1].indexOf('character') != -1) {
-											if (this.intersection == undefined && self.IntersectionObserver) {
-												this.intersection = new IntersectionObserver(function (entries) {
-													for (var i = 0; i < entries.length; i++) {
-														if (entries[i].intersectionRatio > 0) {
-															var target = entries[i].target;
-															target.setBackground(target.awaitItem, 'character');
-															this.unobserve(target);
-														}
-													}
-												}, {
-													root: this,
-													rootMargin: '0px',
-													thresholds: 0.01,
-												});
-											}
-
-											buttons.intersection = this.intersection;
-										}
-
-										this.buttons = this.buttons.concat(ui.create.buttons(item[0], item[1], buttons, noclick));
-									}
-									if (this.buttons.length) {
-										if (this.forcebutton !== false) this.forcebutton = true;
-										if (this.buttons.length > 3 || (zoom && this.buttons.length > 5)) {
-											this.classList.remove('forcebutton-auto');
-										} else if (!this.noforcebutton) {
-											this.classList.add('forcebutton-auto');
-										}
-									}
-									ui.update();
-									return item;
-								},
-
 								open: function () {
 									if (this.noopen) return;
 									for (var i = 0; i < ui.dialogs.length; i++) {
@@ -4215,7 +4176,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									b.textContent = cardNumber;
 									tempname += b.outerHTML;
 								}
-								if (card.name != cardName || card.nature != cardNature) {
+								if (card.name != cardName || !get.is.sameNature(card.nature, cardNature, true)) {
 									if (cardNature) {
 										node.dataset.nature = cardNature;
 										if (cardName == 'sha') tempname += get.translation(cardNature);
@@ -4460,44 +4421,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								ui.control.insertBefore(control, _status.createControl || ui.confirm);
 								control.addEventListener(lib.config.touchscreen ? 'touchend' : 'click', ui.click.control2);
 								return control;
-							},
-
-							dialog: function () {
-								var i;
-								var hidden = false;
-								var notouchscroll = false;
-								var forcebutton = false;
-								var noforcebutton = false;
-								var dialog = decadeUI.element.create('dialog');
-								dialog.contentContainer = decadeUI.element.create('content-container', dialog);
-								dialog.content = decadeUI.element.create('content', dialog.contentContainer);
-								dialog.buttons = [];
-								for (i in lib.element.dialog) dialog[i] = lib.element.dialog[i];
-								for (i = 0; i < arguments.length; i++) {
-									if (typeof arguments[i] == 'boolean') dialog.static = arguments[i];
-									else if (arguments[i] == 'hidden') hidden = true;
-									else if (arguments[i] == 'notouchscroll') notouchscroll = true;
-									else if (arguments[i] == 'forcebutton') forcebutton = true;
-									else if (arguments[i] == 'noforcebutton') noforcebutton = true;
-									else dialog.add(arguments[i]);
-								}
-								if (!hidden) dialog.open();
-								if (!lib.config.touchscreen) dialog.contentContainer.onscroll = ui.update;
-								if (!notouchscroll) {
-									dialog.contentContainer.ontouchstart = ui.click.dialogtouchStart;
-									dialog.contentContainer.ontouchmove = ui.click.touchScroll;
-									dialog.contentContainer.style.WebkitOverflowScrolling = 'touch';
-									dialog.ontouchstart = ui.click.dragtouchdialog;
-								}
-
-								if (noforcebutton) {
-									dialog.noforcebutton = true;
-								}
-								else if (forcebutton) {
-									dialog.forcebutton = true;
-									dialog.classList.add('forcebutton');
-								}
-								return dialog;
 							},
 
 							selectlist: function (list, init, position, onchange) {
@@ -7144,8 +7067,36 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						target.$throwordered2(card2.copy(false));
 						player.$throwordered2(card1.copy(false));
 					};
-
-
+					Mixin.redirect(
+						'lib.element.card.copy',
+						/(?=\s*node\s*\.\s*classList\s*\.\s*remove\s*\(\s*\Whidden\W\s*\)\s*)/,
+						function (node) {
+							node.nature = this.nature;
+						}
+					);
+					Mixin.redirect(
+						'lib.element.dialog.add',
+						/(?=\s*this\s*\.\s*buttons\s*=\s*this\s*\.\s*buttons\s*\.\s*concat\s*\(\s*ui\s*\.\s*create\s*\.\s*buttons\s*\(\s*item\s*\[\s*0\s*\]\s*,\s*item\[\s*1\s*\]\s*,\s*buttons\s*,\s*noclick\s*\)\s*\)\s*;)/,
+						function (item, buttons) {
+							if (typeof item[1] == 'string' && item[1].includes('character')) {
+								if (this.intersection == undefined && self.IntersectionObserver) this.intersection = new IntersectionObserver((intersectionObserverEntries, intersectionObserver) => intersectionObserverEntries.forEach(intersectionObserverEntry => {
+									if (intersectionObserverEntry.intersectionRatio <= 0) return;
+									const target = intersectionObserverEntry.target;
+									target.setBackground(target.awaitItem, 'character');
+									intersectionObserver.unobserve(target);
+								}), {
+									root: this,
+									rootMargin: '0px',
+									thresholds: 0.01,
+								});
+								buttons.intersection = this.intersection;
+							}
+						}
+					);
+					Mixin.redirect(
+						'ui.create.dialog',
+						/\s*dialog\s*\.\s*bar\d*\s*=\s*ui\s*\.\s*create\s*\.\s*div\s*\([\s\S]*?\)\s*;/g
+					);
 				},
 				dialog: {
 					create: function (className, parentNode, tagName) {
@@ -8244,7 +8195,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 
 							var cardname = event.card.name;
 							var cardnature = event.card.nature;
-							if ((lib.config.cardtempname != 'off') && ((card.name != cardname) || (card.nature != cardnature))) {
+							if ((lib.config.cardtempname != 'off') && (card.name != cardname || !get.is.sameNature(card.nature, cardnature, true))) {
 								if (!card._tempName) card._tempName = ui.create.div('.temp-name', card);
 
 								var tempname = get.translation(cardname);
@@ -9818,8 +9769,9 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					const a = document.createElement('a');
 					if (download) a.download = true;
 					a.href = href;
-					a.innerHTML = innerHTML;
 					a.target = '_blank';
+					a.style.color = 'currentcolor';
+					a.innerHTML = innerHTML;
 					return a.outerHTML;
 				};
 				let changelog;
@@ -9831,21 +9783,24 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 				}
 				p.innerHTML = [
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
+					'反馈问题建议前往：',
+					generateAHTML('https://github.com/Tipx-L/decade-ui/issues', formatURL('https://github.com/Tipx-L/decade-ui/issues')),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/issues', `${formatURL('https://hub.fgit.cf/Tipx-L/decade-ui/issues')}（更容易访问）`),
 					`当前版本：${version}（Show-K修复版）`,
 					`更新日期：${updateDate}`,
 					...changelog,
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
-					generateAHTML('https://github.com/Tipx-L/decade-ui', 'https:<wbr>//<wbr>github<wbr>.com<wbr>/Tipx<wbr>-L<wbr>/decade<wbr>-ui'),
-					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui', 'FastGit'),
+					generateAHTML('https://github.com/Tipx-L/decade-ui', formatURL('https://github.com/Tipx-L/decade-ui')),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui', `${formatURL('https://hub.fgit.cf/Tipx-L/decade-ui')}（更容易访问）`),
 					'最新版下载链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub', true),
-					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub Proxy', true),
-					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'FastGit', true),
+					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub Proxy（更容易访问）', true),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'FastGit（更容易访问）', true),
 					'最新版（无动态背景和动态皮肤）下载链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'GitHub', true),
-					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'GitHub Proxy', true),
-					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'FastGit', true),
+					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'GitHub Proxy（更容易访问）', true),
+					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/releases/latest/download/decade-ui-no-dynamics.zip', 'FastGit（更容易访问）', true),
 					'或者关注微信公众号“无名杀扩展交流”，及时获取《十周年UI》最新版',
 					/*
 					'- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；',
