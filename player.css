@@ -1067,15 +1067,16 @@
 }
 
 .player>.card-count::before {
-	content: attr(data-text);
-	position: absolute;
-	left: 0;
-	top: 0;
-	height: 100%;
-	width: 100%;
-	line-height: 28px;
 	color: transparent;
+	content: attr(data-text);
+	height: 100%;
+	left: 0;
+	line-height: 28px;
+	position: absolute;
 	-webkit-text-stroke: 2px black;
+	top: 0;
+	white-space: pre;
+	width: 100%;
 	z-index: -1;
 }
 
@@ -1147,13 +1148,14 @@
 }
 
 .player>.damage::before {
-	content: attr(data-text);
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
 	color: transparent;
+	content: attr(data-text);
+	left: 0;
+	position: absolute;
 	-webkit-text-stroke: 4px #803B02;
+	top: 0;
+	white-space: pre;
+	width: 100%;
 	z-index: -1;
 }
 

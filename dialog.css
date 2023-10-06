@@ -39,14 +39,15 @@
 }
 
 #arena>.hand-tip::before {
-	content: attr(data-text);
-	position: absolute;
-	left: 0;
-	top: 0;
-	height: 100%;
-	width: 100%;
 	color: transparent;
+	content: attr(data-text);
+	height: 100%;
+	left: 0;
+	position: absolute;
 	-webkit-text-stroke: 3px rgb(65, 52, 25);
+	top: 0;
+	white-space: pre-wrap;
+	width: 100%;
 	z-index: -1;
 }
 
@@ -322,17 +323,18 @@
 
 .skill-dialog.compare>.content>.player-card::before,
 .skill-dialog.compare>.content>.target-card::before {
-	content: attr(data-text);
-	position: absolute;
-	left: 0;
-	top: calc(50% + 80px);
-	width: 100%;
-	height: auto;
 	color: red;
+	content: attr(data-text);
 	font-family: xingkai;
 	font-size: 20px;
+	height: auto;
+	left: 0;
+	position: absolute;
 	text-align: center;
 	text-shadow: none;
+	top: calc(50% + 80px);
+	white-space: pre-wrap;
+	width: 100%;
 }
 
 .skill-dialog.compare>.content>.player-card::after {

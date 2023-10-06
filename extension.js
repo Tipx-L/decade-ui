@@ -6416,7 +6416,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							node.classList.add('damageadded');
 						}
 						node.innerHTML = str;
-						node.dataset.text = str;
+						node.dataset.text = node.innerText;
 						node.dataset.nature = nature || 'soil';
 						node.style.animation = 'open-fade-in 0.6s';
 					};
@@ -6458,7 +6458,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 
 							node.innerHTML = num;
-							node.dataset.text = node.textContent || node.innerText;
+							node.dataset.text = node.innerText;
 							node.nature = nature || 'soil';
 							this.damagepopups.push(node);
 						}
@@ -8309,7 +8309,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 											this.$player.firstChild.style.backgroundImage = (value.isUnseen(0) ? value.node.avatar2 : value.node.avatar).style.backgroundImage;
 										}
 
-										if (value) this.$playerCard.dataset.text = get.translation(value) + '发起';
+										if (value) this.$playerCard.dataset.text = `${get.translation(value).replace(/<br>/g, '\n')}发起`;
 									},
 								},
 								target: {
@@ -8326,7 +8326,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 											this.$target.firstChild.style.backgroundImage = (value.isUnseen(0) ? value.node.avatar2 : value.node.avatar).style.backgroundImage;
 										}
 
-										if (value) this.$targetCard.dataset.text = get.translation(value);
+										if (value) this.$targetCard.dataset.text = get.translation(value).replace(/<br>/g, '\n');
 									},
 								},
 								playerCard: {
