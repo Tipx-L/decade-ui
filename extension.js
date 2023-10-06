@@ -35,6 +35,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 	let versionMD;
 	try {
 		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).split(/\r\n|\r|\n/);
+		if (!versionMD[versionMD.length - 1]) versionMD.pop();
 	}
 	catch (ignored) {
 		versionMD = ["", ""];
@@ -3276,6 +3277,9 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									return mark;
 								},
 
+								/**
+								 * @todo Rewrite using Mixin.
+								 */
 								markCharacter: function (name, info, learn, learn2) {
 									if (typeof name == 'object') name = name.name;
 
@@ -3286,7 +3290,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									if (!info.name) info.name = get.translation(name);
 									if (!info.content) info.content = get.skillintro(name, learn, learn2);
 
-									if (name.indexOf('unknown') == 0) {
+									if (name.startsWith('unknown')) {
 										nodeMarkText.innerHTML = get.translation(name)[0];
 									} else {
 										if (!lib.character[name]) return console.error(name);
@@ -4227,6 +4231,9 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}, game.roundNumber, ui.cardPile.childNodes.length);
 					};
 
+					/**
+					 * @todo Rewrite using Mixin.
+					 */
 					game.check = function (event) {
 						var i, j, range;
 						if (event == undefined) event = _status.event;
@@ -9398,6 +9405,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 				let changelog;
 				try {
 					changelog = lib.init.reqSync(`local:${decadeUIPath}CHANGELOG.md`).split(/\r\n|\r|\n/);
+					if (!changelog[changelog.length - 1]) changelog.pop();
 				}
 				catch (ignored) {
 					changelog = [];
@@ -9406,14 +9414,14 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					'有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。',
 					'反馈问题建议前往：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui/issues', formatURL('https://github.com/Tipx-L/decade-ui/issues')),
-					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/issues', `${formatURL('https://hub.fgit.cf/Tipx-L/decade-ui/issues')}（更容易访问）`),
+					`${generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui/issues', formatURL('https://hub.fgit.cf/Tipx-L/decade-ui/issues'))} （更容易访问）`,
 					`当前版本：${version}（Show-K修复版）`,
 					`更新日期：${updateDate}`,
 					...changelog,
 					'《十周年UI》采用GNU通用公共许可证v3.0授权',
 					'仓库链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui', formatURL('https://github.com/Tipx-L/decade-ui')),
-					generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui', `${formatURL('https://hub.fgit.cf/Tipx-L/decade-ui')}（更容易访问）`),
+					`${generateAHTML('https://hub.fgit.cf/Tipx-L/decade-ui', formatURL('https://hub.fgit.cf/Tipx-L/decade-ui'))} （更容易访问）`,
 					'最新版下载链接：',
 					generateAHTML('https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub', true),
 					generateAHTML('https://ghproxy.com/https://github.com/Tipx-L/decade-ui/releases/latest/download/decade-ui.zip', 'GitHub Proxy（更容易访问）', true),

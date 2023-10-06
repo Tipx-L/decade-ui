@@ -14,13 +14,22 @@ jobs:
         DECADE_UI_VERSION=${GITHUB_REF_NAME/v/}
         echo $DECADE_UI_VERSION > VERSION.md
         DECADE_UI_UPDATE_DATE=$(date +'%Y-%m-%d')
-        echo -n $DECADE_UI_UPDATE_DATE >> VERSION.md
+        echo $DECADE_UI_UPDATE_DATE >> VERSION.md
         zip -9 -r -u decade-ui.zip *
         cp decade-ui.zip decade-ui-no-dynamics.zip
         zip -d decade-ui-no-dynamics.zip assets/dynamic/*
         echo 有bug先检查其他扩展，不行再关闭UI重试，最后再联系作者。 > RELEASE.md
+        echo >> RELEASE.md
+        echo 反馈问题建议前往： >> RELEASE.md
+        echo >> RELEASE.md
+        echo https://github.com/Tipx-L/decade-ui/issues >> RELEASE.md
+        echo >> RELEASE.md
+        echo https://hub.fgit.cf/Tipx-L/decade-ui/issues（更容易访问） >> RELEASE.md
+        echo >> RELEASE.md
         echo 当前版本：$DECADE_UI_VERSION（Show-K修复版） >> RELEASE.md
+        echo >> RELEASE.md
         echo 更新日期：$DECADE_UI_UPDATE_DATE >> RELEASE.md
+        echo >> RELEASE.md
         while IFS= read -r line || [ "$line" ]; do echo $line >> RELEASE.md; done < CHANGELOG.md
     - uses: softprops/action-gh-release@master
       with:
@@ -28,4 +37,5 @@ jobs:
         files: |
           decade-ui.zip
           decade-ui-no-dynamics.zip
+          RELEASE.md
         name: 十周年UI ${{ github.ref_name }}

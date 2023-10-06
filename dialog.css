@@ -460,9 +460,10 @@
 
 .confirm-box.guan-xing>.content>.card {
 	cursor: pointer;
-	position: absolute;
-	margin: 0;
 	left: 35px;
+	margin: 0;
+	position: absolute;
+	width: 108px;
 }
 
 .confirm-box.guan-xing>.content>.header {

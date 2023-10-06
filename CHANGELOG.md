@@ -1,4 +1,6 @@
-- 修复因选择范围导致的异常（举例：谋刘备〖章武〗）（https://github.com/Tipx-L/decade-ui/issues/4）。
-- 修复因新属性机制导致的异常。
-- 重新增加menu.js，且从此开始采用新编写方式。
-- 开始实验自动化发行。
+- 开始实验注入，用于替代传统的覆写，进而更容易跨版本兼容。
+- 以注入改写`lib.element.content.gain`、`lib.element.card.init`、`lib.element.card.copy`、`lib.element.dialog.add`、`lib.skill._discard.content`、`ui.create.menu`、`ui.create.dialog`。https://github.com/Tipx-L/decade-ui/issues/5 https://github.com/Tipx-L/decade-ui/issues/6 https://github.com/Tipx-L/decade-ui/issues/9
+- 优化自动读取美化卡牌的代码。https://github.com/Tipx-L/decade-ui/issues/7
+- 优化被刘璋〖暗弱〗影响的手牌的显示效果。
+- 修复伪元素的文本内容无法正常换行的异常（举例：界全琮〖邀名〗）。https://github.com/Tipx-L/decade-ui/issues/8
+- 修复卜算时卡牌宽占满整个对话框的异常。
