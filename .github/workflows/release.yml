@@ -24,7 +24,7 @@ jobs:
         echo >> RELEASE.md
         echo https://github.com/Tipx-L/decade-ui/issues >> RELEASE.md
         echo >> RELEASE.md
-        echo https://hub.fgit.cf/Tipx-L/decade-ui/issues（更容易访问） >> RELEASE.md
+        echo https://hub.fgit.cf/Tipx-L/decade-ui/issues （更容易访问） >> RELEASE.md
         echo >> RELEASE.md
         echo 当前版本：$DECADE_UI_VERSION（Show-K修复版） >> RELEASE.md
         echo >> RELEASE.md
