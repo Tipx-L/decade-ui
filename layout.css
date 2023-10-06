@@ -259,8 +259,7 @@ body>.background {
 	border-radius: 2px;
 }
 
-.card,
-.card.decade-card {
+.card {
 	width: 108px;
 	height: 150px;
 	box-shadow: 0 1px 4px black;

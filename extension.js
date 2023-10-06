@@ -4,15 +4,32 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
 		/**
 		 * @param {string} method
-		 * @param {RegExp} at
-		 * @param {Function?} callback
+		 * @param {string | RegExp} at
+		 * @param {string | Function?} callback
 		 */
-		redirect(method, at, callback) {
+		redirect(method) {
+			/**
+			 * @type {(string | RegExp)[]}
+			 */
+			const ats = [];
+			/**
+			 * @type {(string | Function?)[]}
+			 */
+			const callbacks = [];
+			Array.from(arguments).forEach((argument, index) => {
+				if (!index) return;
+				if (index % 2) ats.push(argument);
+				else callbacks.push(argument);
+			});
 			/**
 			 * @type {string}
 			 */
-			const redirectingMethod = eval(`${method}.toString();`);
-			eval(`${method} = ${redirectingMethod.replace(at, callback && `\n${callback.toString().replace(/^\W*(function[^{]+\{([\s\S]*)\}|[^=]+=>[^{]*\{([\s\S]*)\}|[^=]+=>\s*([\s\S]*))/i, '$2$3$4').trim()}` || '')}`);
+			let redirectingMethod = eval(`${method}.toString();`);
+			ats.forEach((at, index) => {
+				const callback = callbacks[index];
+				redirectingMethod = redirectingMethod.replace(at, callback ? `\n${callback.toString().replace(/^\W*(function[^{]+\{([\s\S]*)\}|[^=]+=>[^{]*\{([\s\S]*)\}|[^=]+=>\s*([\s\S]*))/i, '$2$3$4').trim()}` : '');
+			});
+			eval(`${method} = ${redirectingMethod}`);
 		}
 	};
 	let versionMD;
@@ -30,15 +47,15 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 	const formatURL = url => url
 		.split("//")
 		.map(subURL => subURL
-			.replace(/(?<after>:)/giu, "$1<wbr>")
-			.replace(/(?<before>[/~.,\-_?#%])/giu, "<wbr>$1")
-			.replace(/(?<beforeAndAfter>[=&])/giu, "<wbr>$1<wbr>"))
+			.replace(/(:)/giu, "$1<wbr>")
+			.replace(/([/~.,\-_?#%])/giu, "<wbr>$1")
+			.replace(/([=&])/giu, "<wbr>$1<wbr>"))
 		.join("//<wbr>");
 	return {
 		name: "十周年UI",
 		content: config => {
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
-			const extensionName = decadeUIName, extension = lib.extensionMenu[`extension_${extensionName}`], extensionPath = `${lib.assetURL}extension/${extensionName}/`;
+			const extension = lib.extensionMenu[`extension_${decadeUIName}`];
 
 
 			if (!(extension && extension.enable && extension.enable.init)) return;
@@ -56,12 +73,12 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					break;
 			}
 
-			console.time(extensionName);
+			console.time(decadeUIName);
 
 			window.duicfg = config;
 			window.dui = window.decadeUI = {
 				init: function () {
-					this.extensionName = extensionName;
+					this.extensionName = decadeUIName;
 
 					var sensor = decadeUI.element.create('sensor', document.body);
 					sensor.id = 'decadeUI-body-sensor';
@@ -165,10 +182,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						},
 						lib: {
 							element: {
-								card: {
-									init: lib.element.card.init,
-								},
-
 								content: {
 									chooseButton: lib.element.content.chooseButton,
 									turnOver: lib.element.content.turnOver,
@@ -325,7 +338,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 										clipSlots: skin.clipSlots,	// 剪掉超出头的部件，仅针对露头动皮，其他勿用
 									}, i == 1);
 
-									this.$dynamicWrap.style.backgroundImage = 'url("' + extensionPath + 'assets/dynamic/' + skin.background + '")';
+									this.$dynamicWrap.style.backgroundImage = 'url("' + decadeUIPath + 'assets/dynamic/' + skin.background + '")';
 									if (!increased) {
 										increased = true;
 										decadeUI.CUR_DYNAMIC++;
@@ -2201,160 +2214,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							"step 1"
 							game.delayx(0.5);
 						};
-						EventContent.gain = function () {
-							"step 0"
-							if (event.animate == 'give')
-								event.visible = true;
-
-							if (cards) {
-								var map = {};
-								for (var i of cards) {
-									var owner = get.owner(i, 'judge');
-									if (owner && (owner != player || get.position(i) != 'h')) {
-										var id = owner.playerid;
-										if (!map[id]) map[id] = [[], [], []];
-										map[id][0].push(i);
-										var position = get.position(i);
-										if (position == 'h') map[id][1].push(i);
-										else map[id][2].push(i);
-									} else if (!event.updatePile && get.position(i) == 'c') event.updatePile = true;
-								}
-								event.losing_map = map;
-								for (var i in map) {
-									var owner = (_status.connectMode ? lib.playerOL : game.playerMap)[i];
-									var next = owner.lose(map[i][0], ui.special).set('type', 'gain').set('forceDie', true).set('getlx', false);
-									if (event.visible == true)
-										next.visible = true;
-
-									event.relatedLose = next;
-								}
-							} else {
-								event.finish();
-							}
-							"step 1"
-							for (var i = 0; i < cards.length; i++) {
-								if (cards[i].destroyed) {
-									if (player.hasSkill(cards[i].destroyed)) {
-										delete cards[i].destroyed;
-									} else {
-										cards.splice(i--, 1);
-									}
-								}
-							}
-							if (cards.length == 0) {
-								event.finish();
-								return;
-							}
-							player.getHistory('gain').push(event);
-							"step 2"
-							if (player.getStat().gain == undefined) {
-								player.getStat().gain = cards.length;
-							} else {
-								player.getStat().gain += cards.length;
-							}
-							"step 3"
-							var gaintag = event.gaintag;
-							var handcards = player.node.handcards1;
-							var fragment = document.createDocumentFragment();
-
-							var card;
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-								card.fix();
-								if (card.parentNode == handcards) {
-									cards.splice(i--, 1);
-									continue;
-								}
-
-								if (gaintag)
-									card.addGaintag(gaintag);
-
-								fragment.insertBefore(card, fragment.firstChild);
-								if (_status.discarded)
-									_status.discarded.remove(card);
-
-								for (var j = 0; j < card.vanishtag.length; j++) {
-									if (card.vanishtag[j][0] != '_')
-										card.vanishtag.splice(j--, 1);
-								}
-							}
-
-							var gainTo = function (cards, nodelay) {
-								cards.duiMod = event.source;
-								if (player == game.me) {
-									dui.layoutHandDraws(cards.reverse());
-									dui.queueNextFrameTick(dui.layoutHand, dui);
-									game.addVideo('gain12', player, [get.cardsInfo(fragment.childNodes), gaintag]);
-								}
-
-								var s = player.getCards('s');
-								if (s.length)
-									handcards.insertBefore(fragment, s[0]);
-								else
-									handcards.appendChild(fragment);
-
-								game.broadcast(function (player, cards, num, gaintag) {
-									player.directgain(cards, null, gaintag);
-									_status.cardPileNum = num;
-								}, player, cards, ui.cardPile.childNodes.length, gaintag);
-
-								if (nodelay !== true) {
-									setTimeout(function (player) {
-										player.update();
-										game.resume();
-									}, get.delayx(400, 400) + 66, player);
-								} else {
-									player.update();
-								}
-							};
-							if (event.animate == 'draw') {
-								game.pause();
-								gainTo(cards);
-								player.$draw(cards.length);
-							} else if (event.animate == 'gain') {
-								game.pause();
-								gainTo(cards);
-								player.$gain(cards, event.log);
-							} else if (event.animate == 'gain2' || event.animate == 'draw2') {
-								game.pause();
-								gainTo(cards);
-								player.$gain2(cards, event.log);
-							} else if (event.animate == 'give' || event.animate == 'giveAuto') {
-								game.pause();
-								gainTo(cards);
-								var evtmap = event.losing_map;
-								if (event.animate == 'give') {
-									for (var i in evtmap) {
-										var source = (_status.connectMode ? lib.playerOL : game.playerMap)[i];
-										source.$give(evtmap[i][0], player, event.log)
-									}
-								} else {
-									for (var i in evtmap) {
-										var source = (_status.connectMode ? lib.playerOL : game.playerMap)[i];
-										if (evtmap[i][1].length) source.$giveAuto(evtmap[i][1], player, event.log);
-										if (evtmap[i][2].length) source.$give(evtmap[i][2], player, event.log);
-									}
-								}
-							} else if (typeof event.animate == 'function') {
-								var time = event.animate(event);
-								game.pause();
-								setTimeout(function () {
-									addv();
-									player.node.handcards1.insertBefore(frag1, player.node.handcards1.firstChild);
-									player.node.handcards2.insertBefore(frag2, player.node.handcards2.firstChild);
-									player.update();
-									if (player == game.me) ui.updatehl();
-									broadcast();
-									game.resume();
-								}, get.delayx(time, time));
-							} else {
-								gainTo(cards, true);
-								event.finish();
-							}
-							"step 4"
-							if (event.updatePile) game.updateRoundNumber();
-							event.finish();
-						};
 						EventContent.gameDraw = function () {
 							"step 0"
 							if (_status.brawl && _status.brawl.noGameDraw)
@@ -3250,352 +3109,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							},
 
 							card: {
-								init: function (card) {
-									if (Array.isArray(card)) {
-										if (card[2] == 'huosha') {
-											card[2] = 'sha';
-											card[3] = ['fire'];
-										}
-										else if (card[2] == 'leisha') {
-											card[2] = 'sha';
-											card[3] = ['thunder'];
-										}
-										else if (card[2] == 'cisha') {
-											card[2] = 'sha';
-											card[3] = ['stab'];
-										}
-										else if (card[2].length > 3) {
-											let prefix = card[2].slice(0, card[2].lastIndexOf('sha'));
-											if (prefix.length + 3 == card[2].length) {
-												card[2] = 'sha';
-												card[3] = [prefix];
-											}
-										}
-									} else if (typeof card == 'object') {
-										card = [card.suit, card.number, card.name, card.nature];
-									}
-
-									var cardnum = card[1] || '';
-									var cardsuit = get.translation(card[0]);
-									if (parseInt(cardnum) == cardnum) cardnum = parseInt(cardnum);
-									if (cardnum > 0 && cardnum < 14) {
-										cardnum = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'][cardnum - 1];
-									}
-									if (!lib.card[card[2]]) lib.card[card[2]] = {};
-									var info = lib.card[card[2]];
-									if (info.global && !this.classList.contains('button')) {
-										if (Array.isArray(info.global)) {
-											while (info.global.length) {
-												game.addGlobalSkill(info.global.shift());
-											}
-										} else if (typeof info.global == 'string') {
-											game.addGlobalSkill(info.global);
-										}
-										delete info.global;
-									}
-									if (this.name) {
-										this.classList.remove('epic');
-										this.classList.remove('legend');
-										this.classList.remove('gold');
-										this.classList.remove('unique');
-										this.style.background = '';
-										var subtype = get.subtype(this);
-										if (subtype) {
-											this.classList.remove(subtype);
-										}
-									}
-									if (info.epic) {
-										this.classList.add('epic');
-									} else if (info.legend) {
-										this.classList.add('legend');
-									} else if (info.gold) {
-										this.classList.add('gold');
-									} else if (info.unique) {
-										this.classList.add('unique');
-									}
-									var bg = card[2];
-									if (info.cardimage) {
-										bg = info.cardimage;
-									}
-									var img = lib.card[bg].image;
-									if (img) {
-										if (img.indexOf('db:') == 0) {
-											img = img.slice(3);
-										} else if (img.indexOf('ext:') != 0) {
-											img = null;
-										}
-									}
-									this.classList.remove('fullskin');
-									this.classList.remove('fullimage');
-									this.classList.remove('fullborder');
-									this.dataset.cardName = card[2];
-									this.dataset.cardType = info.type || '';
-									this.dataset.cardSubype = info.subtype || '';
-									this.dataset.cardMultitarget = info.multitarget ? '1' : '0';
-									if (this.node.name.dataset.nature) this.node.name.dataset.nature = '';
-									if (!lib.config.hide_card_image && lib.card[bg].fullskin) {
-										this.classList.add('fullskin');
-										if (img) {
-											if (img.indexOf('ext:') == 0) {
-												this.node.image.setBackgroundImage(img.replace(/^ext:/, 'extension/'));
-											} else {
-												this.node.image.setBackgroundDB(img);
-											}
-										} else {
-											if (lib.card[bg].modeimage) {
-												this.node.image.setBackgroundImage('image/mode/' + lib.card[bg].modeimage + '/card/' + bg + '.png');
-											} else {
-												do {
-													let nature = card[3];
-													if (bg == 'sha' && typeof nature == 'string') {
-														let natures = get.natureList(nature), _bg;
-														for (const n of natures) if (lib.natureBg.has(n)) _bg = n;
-														if (_bg) {
-															this.node.image.setBackgroundImage(lib.natureBg.get(_bg));
-															break;
-														}
-													}
-													this.node.image.setBackgroundImage('image/card/' + bg + '.png');
-												}
-												while (0);
-											}
-										}
-										// } else if (lib.card[bg].image == 'background') {
-										// if (card[3]) this.node.background.setBackground(bg + '_' + get.natureList(card[3])[0], 'card');
-										// else this.node.background.setBackground(bg, 'card');
-									} else if (lib.card[bg].fullimage) {
-										this.classList.add('fullimage');
-										if (img) {
-											if (img.indexOf('ext:') == 0) {
-												this.setBackgroundImage(img.replace(/^ext:/, 'extension/'));
-												this.style.backgroundSize = 'cover !important';
-											} else {
-												this.setBackgroundDB(img);
-											}
-										} else if (lib.card[bg].image) {
-											if (lib.card[bg].image.indexOf('character:') == 0) {
-												this.setBackground(lib.card[bg].image.slice(10), 'character');
-											} else {
-												this.setBackground(lib.card[bg].image);
-											}
-										} else {
-											var cardPack = lib.cardPack['mode_' + get.mode()];
-											if (Array.isArray(cardPack) && cardPack.contains(bg)) {
-												this.setBackground('mode/' + get.mode() + '/card/' + bg);
-											} else {
-												this.setBackground('card/' + bg);
-											}
-										}
-									} else if (lib.card[bg].fullborder) {
-										this.classList.add('fullborder');
-										if (lib.card[bg].fullborder == 'gold') {
-											this.node.name.dataset.nature = 'metalmm';
-										} else if (lib.card[bg].fullborder == 'silver') {
-											this.node.name.dataset.nature = 'watermm';
-										}
-										if (!this.node.avatar) {
-											this.node.avatar = ui.create.div('.cardavatar');
-											this.insertBefore(this.node.avatar, this.firstChild);
-										}
-										if (!this.node.framebg) {
-											this.node.framebg = ui.create.div('.cardframebg');
-											this.node.framebg.dataset.auto = lib.card[bg].fullborder;
-											this.insertBefore(this.node.framebg, this.firstChild);
-										}
-										if (img) {
-											if (img.indexOf('ext:') == 0) {
-												this.node.avatar.setBackgroundImage(img.replace(/^ext:/, 'extension/'));
-												this.node.avatar.style.backgroundSize = 'cover !important';
-											} else {
-												this.node.avatar.setBackgroundDB(img);
-											}
-										} else if (lib.card[bg].image) {
-											if (lib.card[bg].image.indexOf('character:') == 0) {
-												this.node.avatar.setBackground(lib.card[bg].image.slice(10), 'character');
-											} else {
-												this.node.avatar.setBackground(lib.card[bg].image);
-											}
-										} else {
-											var cardPack = lib.cardPack['mode_' + get.mode()];
-											if (Array.isArray(cardPack) && cardPack.contains(bg)) {
-												this.node.avatar.setBackground('mode/' + get.mode() + '/card/' + bg);
-											} else {
-												this.node.avatar.setBackground('card/' + bg);
-											}
-										}
-									} else if (lib.card[bg].image == 'card') {
-										if (card[3]) this.setBackground(bg + '_' + get.natureList(card[3])[0], 'card');
-										else this.setBackground(bg, 'card');
-									} else if (typeof lib.card[bg].image == 'string' && !lib.card[bg].fullskin) {
-										if (img) {
-											if (img.indexOf('ext:') == 0) {
-												this.setBackgroundImage(img.replace(/^ext:/, 'extension/'));
-												this.style.backgroundSize = 'cover !important';
-											} else {
-												this.setBackgroundDB(img);
-											}
-										} else {
-											this.setBackground(lib.card[bg].image);
-										}
-									} else {
-										this.node.background.textContent = lib.translate[bg + '_cbg'] || lib.translate[bg + '_bg'] || get.translation(bg)[0];
-										// if (this.node.background.innerHTML.length > 1) this.node.background.classList.add('tight');
-										// else this.node.background.classList.remove('tight');
-									}
-									if (!lib.card[bg].fullborder && this.node.avatar && this.node.framebg) {
-										this.node.avatar.remove();
-										this.node.framebg.remove();
-										this.node.avatar = undefined;
-										this.node.framebg = undefined;
-									}
-									if (info.noname && !this.classList.contains('button')) {
-										this.node.name.style.display = 'none';
-									}
-									if (info.addinfo) {
-										if (!this.node.addinfo) {
-											this.node.addinfo = ui.create.div('.range', this);
-										}
-										this.node.addinfo.innerHTML = info.addinfo;
-									} else if (this.node.addinfo) {
-										this.node.addinfo.remove();
-										delete this.node.addinfo;
-									}
-
-									if (card[0] == 'heart' || card[0] == 'diamond') {
-										this.node.info.classList.add('red');
-									}
-
-									this.node.image.className = 'image';
-
-									var fileName = card[2];
-									var name = get.translation(card[2]);
-									this.dataset.suit = card[0];
-									this.$suitnum.$num.textContent = cardnum;
-									this.$suitnum.$suit.textContent = cardsuit;
-
-									if (card[2] == 'sha') {
-										name = '';
-										let nature = card[3];
-										if (nature) {
-											let natures = get.natureList(nature);
-											natures.sort(lib.sort.nature);
-											for (let nature of natures) {
-												name += lib.translate['nature_' + nature] || lib.translate[nature] || '';
-												fileName += `_${nature}`;
-												if (nature != 'stab') this.node.image.classList.add(nature);
-											}
-										}
-										name += '杀';
-									} else if (card[3]) {
-										const natures = get.natureList(card[3]).sort(lib.sort.nature);
-										this.node.image.classList.add(...natures.filter(nature => nature != 'stab'));
-										fileName += natures.reduce((suffix, nature) => `${suffix}_${nature}`, '');
-									}
-
-									this.$name.innerText = name;
-									this.$vertname.innerText = name;
-									this.$equip.$suitnum.textContent = cardsuit + cardnum;
-									this.$equip.$name.textContent = ' ' + name;
-
-									this.suit = card[0];
-									this.number = parseInt(card[1]) || 0;
-									this.name = card[2];
-									this.classList.add('card');
-									if (card[3]) {
-										let natures = get.natureList(card[3]);
-										natures.forEach(n => { if (n) this.classList.add(n) });
-										this.nature = natures.filter(n => lib.nature.has(n)).sort(lib.sort.nature).join(lib.natureSeparator);
-									} else if (this.nature) {
-										this.classList.remove(this.nature);
-										delete this.nature;
-									}
-									if (info.subtype) this.classList.add(info.subtype);
-									if (this.inits) {
-										for (var i = 0; i < lib.element.card.inits.length; i++) {
-											lib.element.card.inits[i](this);
-										}
-									}
-									if (typeof info.init == 'function') info.init();
-									switch (get.subtype({ card: this.name })) {
-										case 'equip1':
-											var added = false;
-											if (lib.card[this.name] && lib.card[this.name].distance) {
-												var dist = lib.card[this.name].distance;
-												if (dist.attackFrom) {
-													added = true;
-													this.$range.textContent = '范围: ' + (- dist.attackFrom + 1);
-												}
-											}
-											if (!added) this.$range.textContent = '范围: 1';
-											break;
-										case 'equip3':
-											if (info.distance && info.distance.globalTo) {
-												this.$range.textContent = '防御: ' + info.distance.globalTo;
-												this.$equip.$name.textContent += '+';
-											}
-											break;
-										case 'equip4':
-											if (info.distance && info.distance.globalFrom) {
-												this.$range.textContent = '进攻: ' + (- info.distance.globalFrom);
-												this.$equip.$name.textContent += '-';
-											}
-											break;
-										default:
-											this.$range.textContent = '';
-											break;
-									}
-									if (_status.connectMode && !game.online && lib.cardOL && !this.cardid) {
-										this.cardid = get.id();
-										lib.cardOL[this.cardid] = this;
-									}
-
-									var tags = [];
-									if (!_status.connectMode && !_status.video) this.cardid = get.id();
-									if (Array.isArray(card[4])) tags.addArray(card[4]);
-
-									if (this.cardid) {
-										if (!_status.cardtag) _status.cardtag = {};
-										for (var i in _status.cardtag) if (_status.cardtag[i].contains(this.cardid)) { tags.add(i); }
-										if (tags.length) {
-											var tagText = '';
-											for (var i = 0; i < tags.length; i++) {
-												var tag = tags[i];
-												if (!_status.cardtag[tag]) {
-													_status.cardtag[tag] = [];
-												}
-												_status.cardtag[tag].add(this.cardid);
-												tagText += lib.translate[tag + '_tag'];
-											}
-
-											this.$range.textContent = tagText;
-											this.$range.classList.add('card-tag');
-										}
-									}
-
-									const imgFormat = decadeUI.config.cardPrettify;
-									if (imgFormat != 'off' && !this.classList.contains('infohidden')) {
-										const decadeCardImage = new Image(), decadeExtCardImage = lib.decade_extCardImage || {};
-										new Promise((resolve, reject) => {
-											decadeCardImage.onerror = reject;
-											decadeCardImage.onload = resolve;
-											decadeCardImage.src = decadeExtCardImage[fileName] || `${lib.assetURL}extension/${extensionName}/image/card/${fileName}.${imgFormat}`;
-										}).catch(event => new Promise((resolve, reject) => {
-											const cardName = card[2];
-											if (cardName == fileName) reject(event);
-											decadeCardImage.onerror = reject;
-											decadeCardImage.onload = resolve;
-											decadeCardImage.src = decadeExtCardImage[cardName] || `${lib.assetURL}extension/${extensionName}/image/card/${cardName}.${imgFormat}`;
-										})).then(event => {
-											this.classList.add('decade-card');
-											this.style.background = `url('${event.target.src}')`;
-											if (this.node.avatar) this.node.avatar.remove();
-											if (this.node.framebg) this.node.framebg.remove();
-										});
-									}
-
-									return this;
-								},
-
 								updateTransform: function (bool, delay) {
 									if (delay) {
 										var that = this;
@@ -4015,7 +3528,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									var that = this;
 									var image = new Image();
 									var identity = decadeUI.getPlayerIdentity(this);
-									var url = extensionPath + 'image/decoration/dead_' + identity + '.png';
+									var url = decadeUIPath + 'image/decoration/dead_' + identity + '.png';
 									image.onerror = function () {
 										that.node.dieidentity.innerHTML = decadeUI.getPlayerIdentity(that, that.identity, true) + '<br>阵亡';
 									};
@@ -5731,7 +5244,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 										if (isExt) {
 											image.src = filename;
 										} else {
-											image.src = extensionPath + 'image/decoration/identity_' + filename + '.png';
+											image.src = decadeUIPath + 'image/decoration/identity_' + filename + '.png';
 										}
 										this.parentNode.style.backgroundImage = 'url("' + image.src + '")';
 									} else {
@@ -5849,7 +5362,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 										if (decadeUI.config.campIdentityImageMode) {
 											var that = this;
 											var image = new Image();
-											var url = extensionPath + 'image/decoration/name_' + value + '.png';
+											var url = decadeUIPath + 'image/decoration/name_' + value + '.png';
 											if (lib.decade_extGroupImage && lib.decade_extGroupImage[value]) {
 												url = lib.decade_extGroupImage[value];
 											}
@@ -6046,43 +5559,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						},
 						content: function () {
 							ui.clear.delay = 'usecard';
-						}
-					};
-
-					lib.skill._discard = {
-						trigger: { global: ['discardAfter', 'loseToDiscardpileAfter', 'loseAsyncAfter'] },
-						forced: true,
-						popup: false,
-						priority: -100,
-						filter: function (event) {
-							return ui.todiscard[event.discardid] ? true : false;
-						},
-						content: function () {
-							game.broadcastAll(function (id) {
-								if (window.decadeUI) {
-									ui.todiscard = [];
-									ui.clear();
-									return;
-								}
-
-								var todiscard = ui.todiscard[id];
-								delete ui.todiscard[id];
-								if (todiscard) {
-									var time = 1000;
-									if (typeof todiscard._discardtime == 'number') {
-										time += todiscard._discardtime - get.time();
-									}
-									if (time < 0) {
-										time = 0;
-									}
-									setTimeout(function () {
-										for (var i = 0; i < todiscard.length; i++) {
-											todiscard[i].delete();
-										}
-									},
-										time);
-								}
-							}, trigger.discardid);
 						}
 					};
 
@@ -7068,10 +6544,134 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						player.$throwordered2(card1.copy(false));
 					};
 					Mixin.redirect(
+						'lib.element.content.gain',
+						/\s*var\s*sort\s*;[\s\S]*=\s*document\s*\.\s*createDocumentFragment\s*\(\s*\)\s*;/,
+						player => {
+							var handcards = player.node.handcards1;
+							var fragment = document.createDocumentFragment();
+						},
+						/\s*sort\s*=\s*lib\s*\.\s*config\s*\.\s*sort_card\s*\(\s*cards\s*\[\s*num\s*\]\s*\)\s*;\s*if\s*\(\s*lib\s*\.\s*config\s*\.\s*reverse_sort\s*\)\s*sort\s*=-\s*sort\s*;/,
+						'',
+						/\s*cards\s*\[\s*num\s*\]\s*\.\s*style\s*\.\s*transform\s*=\s*''\s*;/,
+						'',
+						/(?=\s*if\s*\(\s*_status\s*\.\s*discarded\s*\)\s*{)/,
+						(fragment, cards, num) => {
+							fragment.insertBefore(cards[num], fragment.firstChild);
+						},
+						/\s*if\s*\(\s*player\s*==\s*game\s*\.\s*me\s*\)\s*{[\s\S]*else\s*frag2\s*\.\s*appendChild\s*\(\s*cards\s*\[\s*num\s*\]\s*\)\s*;/,
+						'',
+						/\s*var\s*addv\s*=\s*function\s*\(\s*\)\s*{[\s\S]*?}\s*;/,
+						'',
+						/(?=\s*if\s*\(\s*event\s*\.\s*animate\s*==\s*'draw'\s*\)\s*{)/,
+						(event, player, dui, fragment, handcards, broadcast) => {
+							var gainTo = function (cards, nodelay) {
+								cards.duiMod = event.source;
+								if (player == game.me) {
+									dui.layoutHandDraws(cards.reverse());
+									dui.queueNextFrameTick(dui.layoutHand, dui);
+									game.addVideo('gain12', player, [get.cardsInfo(fragment.childNodes), event.gaintag]);
+								}
+
+								var s = player.getCards('s');
+								if (s.length)
+									handcards.insertBefore(fragment, s[0]);
+								else
+									handcards.appendChild(fragment);
+
+								broadcast();
+
+								if (nodelay !== true) {
+									setTimeout(function (player) {
+										player.update();
+										game.resume();
+									}, get.delayx(400, 400) + 66, player);
+								} else {
+									player.update();
+								}
+							};
+						},
+						/\s*setTimeout\s*\(\s*function\s*\(\s*\)\s*{[\s\S]*?}\s*,\s*get\s*\.\s*delayx\s*\([\s\S]*?,\s*[\s\S]*?\s*\)\s*\)\s*;/g,
+						(gainTo, cards) => {
+							gainTo(cards);
+						},
+						/\s*addv\s*\(\s*\)\s*;[\s\S]*?broadcast\s*\(\s*\)\s*;/,
+						(gainTo, cards) => {
+							gainTo(cards, true);
+						},
+						/\s*game\s*\.\s*delayx\s*\(\s*\)\s*;(?=\s*if\s*\(\s*event\s*\.\s*updatePile\s*\)\s*game\s*\.\s*updateRoundNumber\s*\(\s*\)\s*;)/
+					);
+					Mixin.redirect(
+						'lib.element.card.init',
+						/\s*else\s*if\s*\(\s*lib\s*\.\s*card\s*\[\s*bg\s*\]\s*\.\s*image\s*==\s*'background'\s*\)\s*{[\s\S]*?}/,
+						'',
+						/\s*if\s*\(\s*this\s*\.\s*node\s*\.\s*background\s*\.innerHTML\s*\.\s*length\s*>\s*1\s*\)\s*this\s*\.\s*node\s*\.\s*background\s*\.classList\s*\.[\s\S]*\('tight'\)\s*;/,
+						'',
+						/\s*if\s*\(\s*info\s*\.\s*color\s*\)\s*{[\s\S]*?else\s*{[\s\S]*?}/,
+						'',
+						/(?=\s*if\s*\(\s*card\s*\[\s*2\]\s*==\s*'sha'\s*\)\s*{)/,
+						function (card, cardnum) {
+							this.dataset.suit = card[0];
+							this.$suitnum.$num.textContent = cardnum;
+							this.$suitnum.$suit.textContent = get.translation(card[0]);
+						},
+						/\s*this\s*\.\s*node\s*\.\s*name\s*\.\s*innerHTML\s*=[\s\S]*name\s*;/,
+						function (name, card, cardnum) {
+							this.$name.innerHTML = name;
+							this.$vertname.innerHTML = name;
+							this.$equip.$suitnum.innerHTML = `${get.translation(card[0])}${cardnum}`;
+							this.$equip.$name.innerHTML = ` ${name}`;
+						},
+						/\s*this\s*\.\s*node\s*\.\s*range\s*\.\s*innerHTML\s*=\s*''\s*;[\s\S]*break\s*;\s*}/,
+						'',
+						' <span class="cardtag">',
+						'',
+						/\s*tagstr\s*\+=\s*'<\/span>'\s*;\s*this\s*\.\s*node\s*\.\s*range\s*\.\s*innerHTML\s*\+=\s*tagstr\s*;/,
+						function (tagstr) {
+							this.$range.innerHTML = tagstr;
+							this.$range.classList.add('card-tag');
+						},
+						/(?=\s*return\s*this\s*;)/,
+						function (card) {
+							if (decadeUI.config.cardPrettify) {
+								const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {}), fileName = card[3] ? `${card[2]}_${get.natureList(card[3]).sort(lib.sort.nature).join('_')}` : card[2];
+								let decadeCardSource = decadeExtCardImage[fileName];
+								if (!decadeCardSource && card[2] != fileName) decadeCardSource = decadeExtCardImage[card[2]];
+								if (decadeCardSource) {
+									this.classList.add('decade-card');
+									if (!this.classList.contains('infohidden')) this.style.backgroundImage = `url('${this.decadeCardSource = decadeCardSource}')`;
+									if (this.node.avatar) this.node.avatar.remove();
+									if (this.node.framebg) this.node.framebg.remove();
+									new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
+										const target = mutationRecord.target, informationHidden = target.classList.contains('infohidden');
+										if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
+										if (informationHidden) target.style.removeProperty('background-image');
+										else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
+									})).observe(this, {
+										attributeFilter: ['class'],
+										attributeOldValue: true
+									});
+								}
+							}
+						}
+					);
+					Mixin.redirect(
 						'lib.element.card.copy',
-						/(?=\s*node\s*\.\s*classList\s*\.\s*remove\s*\(\s*\Whidden\W\s*\)\s*)/,
+						/(?=\s*node\s*\.\s*classList\s*\.\s*remove\s*\(\s*'hidden'\s*\)\s*;)/,
 						function (node) {
 							node.nature = this.nature;
+							node.decadeCardSource = this.decadeCardSource;
+						},
+						/(?=\s*return\s*node\s*;)/,
+						function (clone, node) {
+							if (clone && node.classList.contains('decade-card')) new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
+								const target = mutationRecord.target, informationHidden = target.classList.contains('infohidden');
+								if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
+								if (informationHidden) target.style.removeProperty('background-image');
+								else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
+							})).observe(node, {
+								attributeFilter: ['class'],
+								attributeOldValue: true
+							});
 						}
 					);
 					Mixin.redirect(
@@ -7090,6 +6690,17 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									thresholds: 0.01,
 								});
 								buttons.intersection = this.intersection;
+							}
+						}
+					);
+					Mixin.redirect(
+						'lib.skill._discard.content',
+						/(?=\s*var\s*todiscard\s*=\s*ui\s*\.\s*todiscard\s*\[\s*id\s*\]\s*;)/,
+						() => {
+							if (window.decadeUI) {
+								ui.todiscard = [];
+								ui.clear();
+								return;
 							}
 						}
 					);
@@ -7515,7 +7126,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						if (!this.sheetList) {
 							this.sheetList = [];
 							for (var i = 0; i < document.styleSheets.length; i++) {
-								if (document.styleSheets[i].href && document.styleSheets[i].href.indexOf('extension/' + encodeURI(extensionName)) != -1) {
+								if (document.styleSheets[i].href && document.styleSheets[i].href.indexOf('extension/' + encodeURI(decadeUIName)) != -1) {
 									this.sheetList.push(document.styleSheets[i]);
 								}
 							}
@@ -8939,8 +8550,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					return set;
 				})({}),
 				statics: {
-					handTips: [],
-
+					handTips: []
 				},
 
 				dataset: {
@@ -9395,12 +9005,12 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 
 
 			decadeUI.config = config;
-			duicfg.update = () => Object.values(lib.extensionMenu[`extension_${extensionName}`]).forEach(value => {
+			duicfg.update = () => Object.values(lib.extensionMenu[`extension_${decadeUIName}`]).forEach(value => {
 				if (value && typeof value == 'object' && typeof value.update == 'function') value.update();
 			});
 
 			decadeUI.init();
-			console.timeEnd(extensionName);
+			console.timeEnd(decadeUIName);
 		},
 		precontent: () => {
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
@@ -9447,6 +9057,22 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					this.js(`${decadeUIPath}menu.js`);
 					this.js(`${decadeUIPath}skill.js`);
 					this.js(`${decadeUIPath}spine.js`);
+					const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {});
+					if (window.fs) new Promise((resolve, reject) => fs.readdir(`${__dirname}/${decadeUIPath}image/card/`, (errnoException, files) => {
+						if (errnoException) reject(errnoException);
+						else resolve(files);
+					})).then(files => files.forEach(file => {
+						const fileName = lib.path.parse(file).name;
+						if (!decadeExtCardImage[fileName]) decadeExtCardImage[fileName] = `${decadeUIPath}image/card/${file}`;
+					}));
+					else if (typeof resolveLocalFileSystemURL == 'function') new Promise((resolve, reject) => {
+						resolveLocalFileSystemURL(`${decadeUIPath}image/card/`, resolve, reject);
+					}).then(directoryEntry => new Promise((resolve, reject) => {
+						directoryEntry.createReader().readEntries(resolve, reject);
+					})).then(entries => entries.forEach(entry => {
+						const entryName = entry.name, fileName = lib.path.parse(entryName).name;
+						if (!decadeExtCardImage[fileName]) decadeExtCardImage[fileName] = `${decadeUIPath}image/card/${entryName}`;
+					}));
 					return this;
 				};
 				decadeModule.js = function (path) {
@@ -9534,12 +9160,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			},
 			cardPrettify: {
 				name: '卡牌美化(需重启)',
-				init: 'webp',
-				item: {
-					off: '关闭',
-					webp: 'WEBP素材',
-					png: 'PNG 素材',
-				}
+				init: true
 			},
 			dynamicBackground: {
 				name: '动态背景',
