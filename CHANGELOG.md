@@ -1,6 +1,6 @@
-- 开始实验注入，用于替代传统的覆写，进而更容易跨版本兼容。
-- 以注入改写`lib.element.content.gain`、`lib.element.card.init`、`lib.element.card.copy`、`lib.element.dialog.add`、`lib.skill._discard.content`、`ui.create.menu`、`ui.create.dialog`。https://github.com/Tipx-L/decade-ui/issues/5 https://github.com/Tipx-L/decade-ui/issues/6 https://github.com/Tipx-L/decade-ui/issues/9
-- 优化自动读取美化卡牌的代码。https://github.com/Tipx-L/decade-ui/issues/7
-- 优化被刘璋〖暗弱〗影响的手牌的显示效果。
-- 修复伪元素的文本内容无法正常换行的异常（举例：界全琮〖邀名〗）。https://github.com/Tipx-L/decade-ui/issues/8
-- 修复卜算时卡牌宽占满整个对话框的异常。
+- 祝各位今晚二鬼（指大宝大鬼）拍门！
+- 跟进本体，开始引入面向对象的修改方式（class）以及基于全新的handler的修改方式；(https://github.com/Tipx-L/decade-ui/issues/12)
+  (https://github.com/Tipx-L/decade-ui/issues/13)
+- 将dynamicSkin.js重命名为dynamicSkinTemplate.js，保证修改过dynamicSkin.js的玩家不会因更新被覆盖动态皮肤参数，也因此推荐想要修改动态皮肤参数的新玩家，复制粘贴dynamicSkinTemplate.js并重命名为dynamicSkin.js，然后在dynamicSkin.js修改；(https://github.com/Tipx-L/decade-ui/issues/10)
+- 由于还原了`game.loop`，因此移除“流畅模式”开关；
+- 添加一系列身份美化卡牌；
