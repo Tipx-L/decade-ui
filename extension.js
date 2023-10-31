@@ -3692,11 +3692,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 
 						// 有空重写拼点
-						event.addMessageHook('finished', function () {
-							var dialog = ui.dialogs[this.compareName];
-							if (dialog)
-								dialog.close();
-						});
 						game.broadcastAll(function (player, target, eventName) {
 							if (!window.decadeUI) return;
 
@@ -3990,12 +3985,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 
 						// 有空重写拼点
-						event.addMessageHook('finished', function () {
-							var dialog = ui.dialogs[this.compareName];
-							if (dialog)
-								dialog.close();
-						});
-
 						game.broadcastAll(function (player, target, eventName) {
 							if (!window.decadeUI) return;
 
@@ -8076,6 +8065,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					this.js(`${decadeUIPath}component.js`);
 					this.js(`${decadeUIPath}content.js`);
 					this.js(`${decadeUIPath}dynamicSkin.js`);
+					this.js(`${decadeUIPath}dynamicSkinTemplate.js`);
 					this.js(`${decadeUIPath}effect.js`);
 					this.js(`${decadeUIPath}menu.js`);
 					this.js(`${decadeUIPath}skill.js`);
