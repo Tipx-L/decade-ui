@@ -3,11 +3,11 @@
 game.import('extension', (lib, game, ui, get, ai, _status) => {
 	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
 		/**
+		 * @overload
 		 * @param {string} method
-		 * @param {string | RegExp} at
-		 * @param {string | Function?} callback
+		 * @param {...[string | RegExp | Function][]} args
 		 */
-		redirect(method) {
+		replace(method) {
 			method = method.split(/\s*\|\s*/).find(currentMethod => {
 				try {
 					return eval(`typeof ${currentMethod}`) != 'undefined';
@@ -187,7 +187,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							uncheck: game.uncheck,
 							loop: game.loop,
 							over: game.over,
-							updateRoundNumber: game.updateRoundNumber,
 							phaseLoop: game.phaseLoop,
 							bossPhaseLoop: game.bossPhaseLoop,
 							gameDraw: game.gameDraw,
@@ -204,987 +203,10 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									add: lib.element.control.add,
 									open: lib.element.control.open,
 									close: lib.element.control.close,
-								},
-
-								player: {
-									getState: lib.element.player.getState,
-									init: lib.element.player.init,
-									uninit: lib.element.player.uninit,
-									setModeState: lib.element.player.setModeState,
-									$compare: lib.element.player.$compare,
-									$damage: lib.element.player.$damage,
-									$damagepop: lib.element.player.$damagepop,
-									$dieAfter: lib.element.player.$dieAfter,
-									$skill: lib.element.player.$skill,
-									setSeatNum: lib.element.player.setSeatNum,
-									$syncExpand: lib.element.player.$syncExpand
-								},
-								event: {
-									send: lib.element.event.send,
-								},
+								}
 							},
 						},
 					};
-
-					var Card = (function (Card) {
-						Card.moveTo = function (player) {
-							if (!player)
-								return;
-
-							var arena = dui.boundsCaches.arena;
-							if (!arena.updated)
-								arena.update();
-
-							player.checkBoundsCache();
-							this.fixed = true;
-							var x = Math.round((player.cacheWidth - arena.cardWidth) / 2 + player.cacheLeft);
-							var y = Math.round((player.cacheHeight - arena.cardHeight) / 2 + player.cacheTop);
-							var scale = arena.cardScale;
-
-							this.tx = x;
-							this.ty = y;
-							this.scaled = true;
-							this.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')';
-							return this;
-						};
-						Card.moveDelete = function (player) {
-							this.fixed = true;
-							this.moveTo(player);
-							setTimeout(function (card) {
-								card.delete();
-							}, 460, this);
-						};
-						return Card;
-					})({});
-
-					var Event = (function (Event) {
-						Event.addMessageHook = function (message, callback) {
-							if (this._messages == undefined)
-								this._messages = {};
-
-							message = message.toLowerCase();
-							if (this._messages[message] == undefined)
-								this._messages[message] = [];
-
-							message = this._messages[message];
-							message.push(callback);
-						};
-						Event.triggerMessage = function (message) {
-							if (this._messages == undefined)
-								return;
-
-							message = message.toLowerCase();
-							if (this._messages[message] == undefined)
-								return;
-
-							message = this._messages[message];
-							for (var i = 0; i < message.length; i++) {
-								if (typeof message[i] == 'function')
-									message[i].call(this);
-							}
-
-							this._messages[message] = [];
-						};
-
-						return Event;
-					})({});
-
-					var Player = (function (Player) {
-						Player.init = function (character, character2, skill, update) {
-							this.doubleAvatar = (character2 && lib.character[character2]) != undefined;
-
-							var CUR_DYNAMIC = decadeUI.CUR_DYNAMIC;
-							var MAX_DYNAMIC = decadeUI.MAX_DYNAMIC;
-							if (CUR_DYNAMIC == undefined) {
-								CUR_DYNAMIC = 0;
-								decadeUI.CUR_DYNAMIC = CUR_DYNAMIC;
-							}
-
-							if (MAX_DYNAMIC == undefined) {
-								MAX_DYNAMIC = decadeUI.isMobile() ? 2 : 10;
-								if (window.OffscreenCanvas)
-									MAX_DYNAMIC += 8;
-								decadeUI.MAX_DYNAMIC = MAX_DYNAMIC;
-							}
-
-							if (this.dynamic)
-								this.stopDynamic();
-							var showDynamic = (this.dynamic || CUR_DYNAMIC < MAX_DYNAMIC) && duicfg.dynamicSkin;
-							if (showDynamic && _status.mode != null) {
-								var skins;
-								var dskins = decadeUI.dynamicSkin;
-								var avatars = this.doubleAvatar ? [character, character2] : [character];
-								var increased;
-
-								for (var i = 0; i < avatars.length; i++) {
-									skins = dskins[avatars[i]];
-									if (skins == undefined)
-										continue;
-
-									var keys = Object.keys(skins);
-									if (keys.length == 0) {
-										console.error('player.init: ' + avatars[i] + ' 没有设置动皮参数');
-										continue;
-									}
-
-									var skin = skins[Object.keys(skins)[0]];
-									if (skin.speed == undefined)
-										skin.speed = 1;
-									this.playDynamic({
-										name: skin.name,		//	string 骨骼文件名，一般是assets/dynamic 下的动皮文件，也可以使用.. 来寻找其他文件目录
-										action: skin.action,	// string 播放动作 不填为默认
-										loop: true,				// boolean 是否循环播放
-										loopCount: -1,			// number 循环次数，只有loop为true时生效
-										speed: skin.speed,	 	// number 播放速度
-										filpX: undefined,	 	// boolean 水平镜像
-										filpY: undefined,	 	// boolean 垂直翻转
-										opacity: undefined,	 	// 0~1		不透明度
-										x: skin.x,				// 相对于父节点坐标x，不填为居中
-										// (1) x: 10, 相当于 left: 10px；
-										// (2) x: [10, 0.5], 相当于 left: calc(50% + 10px)；
-										y: skin.y,				// 相对于父节点坐标y，不填为居中
-										// (1) y: 10，相当于 top: 10px；
-										// (2) y: [10, 0.5]，相当于 top: calc(50% + 10px)；
-										scale: skin.scale,		// 缩放
-										angle: skin.angle,		// 角度
-										hideSlots: skin.hideSlots,	// 隐藏不需要的部件，想知道具体部件名称请使用SpineAltasSplit工具查看
-										clipSlots: skin.clipSlots,	// 剪掉超出头的部件，仅针对露头动皮，其他勿用
-									}, i == 1);
-
-									this.$dynamicWrap.style.backgroundImage = 'url("' + decadeUIPath + 'assets/dynamic/' + skin.background + '")';
-									if (!increased) {
-										increased = true;
-										decadeUI.CUR_DYNAMIC++;
-									}
-								}
-							}
-
-							var jie;
-							if (character && duicfg.showJieMark) {
-								if (lib.characterPack.refresh)
-									jie = lib.characterPack.refresh[character];
-								if (jie == null) {
-									jie = character.substr(0, 3);
-									jie == 're_' || jie == 'ol_' || jie == 'xin' || jie == 'old';
-								}
-
-								if (jie != null) {
-									jie = lib.translate[character] && lib.translate[character][0];
-									if (jie == '界') {
-										if (this.$jieMark == undefined)
-											this.$jieMark = dui.element.create('jie-mark', this);
-										else
-											this.appendChild(this.$jieMark);
-									}
-								}
-							}
-
-							var result = this._super.init.apply(this, arguments);
-							if (jie == '界') {
-								var text = result.node.name.innerText;
-								if (text[1] == '\n')
-									text = text.substr(2);
-								else
-									text = text.substr(1);
-
-								result.node.name.innerText = text;
-							}
-
-							return result;
-						};
-						Player.uninit = function () {
-							if (this.$jieMark)
-								this.$jieMark.remove();
-
-							this.stopDynamic();
-							this.doubleAvatar = false;
-							this.node.campWrap.dataset.camp = null;
-							this.node.campWrap.node.campName.innerHTML = '';
-							this.node.campWrap.node.campName.style.backgroundImage = '';
-							this.node.name2.innerHTML = '';
-
-							this.expandedSlots = {};
-							this.disabledSlots = {};
-							this.$syncDisable();
-							if (this.isDisabledJudge()) {
-								game.broadcastAll(function (player) {
-									player.storage._disableJudge = false;
-									for (var i = 0; i < player.node.judges.childNodes.length; i++) {
-										if (player.node.judges.childNodes[i].name == 'disable_judge') {
-											player.node.judges.removeChild(player.node.judges.childNodes[i]);
-											break;
-										}
-									}
-								}, this);
-							}
-							this.node.avatar.hide();
-							this.node.count.hide();
-							if (this.node.wuxing) {
-								this.node.wuxing.hide();
-							}
-							if (this.node.name_seat) {
-								this.node.name_seat.remove();
-								this.node.name_seat = undefined;
-							}
-
-							if (this.storage.nohp) this.node.hp.show();
-							this.classList.remove('unseen');
-							this.classList.remove('unseen2');
-							this.name = undefined;
-							this.name1 = undefined;
-							this.sex = undefined;
-							this.group = undefined;
-							this.hp = undefined;
-							this.maxHp = undefined;
-							this.hujia = undefined;
-
-							this.clearSkills(true);
-							this.node.identity.style.backgroundColor = '';
-							this.node.intro.innerHTML = '';
-							this.node.name.innerHTML = '';
-							this.node.hp.innerHTML = '';
-							this.node.count.innerHTML = '0';
-							if (this.name2) {
-								this.singleHp = undefined;
-								this.node.avatar2.hide();
-								this.node.name2.innerHTML = '';
-								this.classList.remove('fullskin2');
-								this.name2 = undefined;
-							}
-
-							for (var mark in this.marks) this.marks[mark].remove();
-							ui.updatem(this);
-
-							this.skipList = [];
-							this.skills = this.skills.contains('cangji_yozuru') ? ['cangji_yozuru'] : [];
-							this.invisibleSkills = [];
-							this.initedSkills = [];
-							this.additionalSkills = {};
-							this.disabledSkills = {};
-							this.hiddenSkills = [];
-							this.awakenedSkills = [];
-							this.forbiddenSkills = {};
-							this.phaseNumber = 0;
-							this.stat = [{
-								card: {},
-								skill: {}
-							}];
-							this.tempSkills = {};
-							this.storage = {};
-							this.marks = {};
-							this.ai = {
-								friend: [],
-								enemy: [],
-								neutral: []
-							};
-
-							return this;
-						};
-						Player.update = function (count, hp, hpMax, hujia) {
-							if (!_status.video) {
-								if (this.hp >= this.maxHp) this.hp = this.maxHp;
-								count = this.countCards('h');
-								hp = this.hp;
-								hpMax = this.maxHp;
-
-								game.broadcast(function (player, hp, maxHp, hujia) {
-									player.hp = hp;
-									player.maxHp = maxHp;
-									player.hujia = hujia;
-									player.update();
-								}, this, hp, hpMax, this.hujia);
-
-								if (this.hujia) {
-									this.markSkill('ghujia');
-								} else {
-									this.unmarkSkill('ghujia');
-								}
-
-								game.addVideo('update', this, [count, hp, hpMax, this.hujia]);
-							} else {
-								// 虽然上面的 game.addVideo 提供了好几个参数，但是没啥用，因为videoContent里的update缺只给了1个参数。
-								if (!count)
-									count = this.countCards('h');
-
-								hp = this.hp;
-								hpMax = this.maxHp;
-							}
-
-							var hpNode = this.node.hp;
-							if (!this.storage.nohp) {
-								if (hpMax > 5) {
-									hpNode.innerHTML = (isNaN(hp) ? '×' : (hp == Infinity ? '∞' : hp)) + '<br>/<br>'
-										+ (isNaN(hpMax) ? '×' : (hpMax == Infinity ? '∞' : hpMax)) + '<div></div>';
-									if (hp == 0) hpNode.lastChild.classList.add('lost');
-									hpNode.classList.add('textstyle');
-								} else {
-									hpNode.innerHTML = '';
-									hpNode.classList.remove('textstyle');
-									while (hpMax > hpNode.childNodes.length) ui.create.div(hpNode);
-									while (hpNode.childNodes.length && hpMax < hpNode.childNodes.length) hpNode.lastChild.remove();
-
-									for (var i = 0; i < hpMax; i++) {
-										if (i < hp) {
-											hpNode.childNodes[i].classList.remove('lost');
-										} else {
-											hpNode.childNodes[i].classList.add('lost');
-										}
-									}
-								}
-
-								if (hpNode.classList.contains('room')) {
-									hpNode.dataset.condition = 'high';
-								} else if (hp == 0) {
-									hpNode.dataset.condition = '';
-								} else if (hp > Math.round(hpMax / 2) || hp === hpMax) {
-									hpNode.dataset.condition = 'high';
-								} else if (hp > Math.floor(hpMax / 3)) {
-									hpNode.dataset.condition = 'mid';
-								} else {
-									hpNode.dataset.condition = 'low';
-								}
-							}
-
-							this.node.count.innerHTML = count;
-							if (count >= 10) {
-								this.node.count.dataset.condition = 'low';
-							} else if (count > 5) {
-								this.node.count.dataset.condition = 'higher';
-							} else if (count > 2) {
-								this.node.count.dataset.condition = 'high';
-							} else if (count > 0) {
-								this.node.count.dataset.condition = 'mid';
-							} else {
-								this.node.count.dataset.condition = 'none';
-							}
-
-							this.dataset.maxHp = hpMax;
-							this.updateMarks();
-
-							if (this.updates) {
-								for (var i = 0; i < lib.element.player.updates.length; i++) {
-									lib.element.player.updates[i](this);
-								}
-							}
-
-							return this;
-						};
-						Player.chooseToRespond = function () {
-							var next = game.createEvent('chooseToRespond');
-							next.player = this;
-							for (var i = 0; i < arguments.length; i++) {
-								if (typeof arguments[i] == 'number') {
-									next.selectCard = [arguments[i], arguments[i]];
-								} else if (get.itemtype(arguments[i]) == 'select') {
-									next.selectCard = arguments[i];
-								} else if (typeof arguments[i] == 'boolean') {
-									next.forced = arguments[i];
-								} else if (get.itemtype(arguments[i]) == 'position') {
-									next.position = arguments[i];
-								} else if (typeof arguments[i] == 'function') {
-									if (next.filterCard) next.ai = arguments[i];
-									else next.filterCard = arguments[i];
-								} else if (typeof arguments[i] == 'object' && arguments[i]) {
-									next.filter = arguments[i];
-									next.filterCard = get.filter(arguments[i]);
-
-								} else if (arguments[i] == 'nosource') {
-									next.nosource = true;
-								} else if (typeof arguments[i] == 'string') {
-									next.prompt = arguments[i];
-								}
-							}
-							if (next.filterCard == undefined) next.filterCard = lib.filter.all;
-							if (next.selectCard == undefined) next.selectCard = [1, 1];
-							if (next.source == undefined && !next.nosource) next.source = _status.event.player;
-							if (next.ai == undefined) next.ai = get.unuseful2;
-							next.position = 'hs';
-							if (next.ai2 == undefined) next.ai2 = (() => 1);
-							next.setContent('chooseToRespond');
-							next._args = Array.from(arguments);
-							return next;
-						};
-						Player.directgain = function (cards, broadcast, gaintag) {
-							var player = this;
-							var handcards = player.node.handcards1;
-							var handcards2 = player.node.handcards2;
-							var fragment = document.createDocumentFragment();
-							var fragment2 = document.createDocumentFragment();
-
-							var card;
-
-							var hs = this.getCards('hs');
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-								card.fix();
-								if (hs.contains(cards[i])) {
-									cards.splice(i--, 1);
-									continue;
-								}
-								if (gaintag)
-									card.addGaintag(gaintag);
-								var sort = lib.config.sort_card(cards[i]);
-
-								if (get.is.singleHandcard() || sort > 0) {
-									fragment.insertBefore(card, fragment.firstChild);
-								} else {
-									fragment2.insertBefore(card, fragment.firstChild);
-								}
-							}
-
-							if (player == game.me) {
-								if (cards && cards.length) dui.layoutHandDraws(cards.reverse());
-								dui.queueNextFrameTick(dui.layoutHand, dui);
-							}
-
-							var s = player.getCards('s');
-							if (s.length) {
-								var found = false;
-								for (var i = 0; i < handcards.childElementCount; i++) {
-									if (handcards.childNodes[i] == s[0]) {
-										handcards.insertBefore(fragment, s[0]);
-										found = true;
-										break;
-									}
-								}
-								if (!found) {
-									handcards.appendChild(fragment);
-								}
-							}
-							else {
-								handcards.appendChild(fragment);
-							}
-							s = player.getCards('s');
-							if (s.length) {
-								var found = false;
-								for (var i = 0; i < handcards2.childElementCount; i++) {
-									if (handcards2.childNodes[i] == s[0]) {
-										handcards2.insertBefore(fragment2, s[0]);
-										found = true;
-										break;
-									}
-								}
-								if (!found) {
-									handcards2.appendChild(fragment2);
-								}
-							}
-							else {
-								handcards2.appendChild(fragment2);
-							}
-
-							if (this == game.me || _status.video) ui.updatehl();
-							if (!_status.video) {
-								game.addVideo('directgain', this, get.cardsInfo(cards));
-								this.update();
-							}
-
-							if (broadcast !== false)
-								game.broadcast(function (player, cards) {
-									player.directgain(cards);
-								}, this, cards);
-							return this;
-						};
-						Player.useCard = function () {
-							var event = this._super.useCard.apply(this, arguments);
-							Object.defineProperties(event, {
-								oncard: {
-									get: function () {
-										return this._oncard;
-									},
-									set: function (value) {
-										this._oncard2 = value;
-									}
-								}
-							});
-							event.finish = function () {
-								this.finished = true;
-								var targets = this.targets;
-								for (var i = 0; i < targets.length; i++) {
-									targets[i].classList.remove('target');
-								}
-							};
-							event._oncard = function (card, player) {
-								var player = this.player;
-								var targets = this.targets;
-								for (var i = 0; i < targets.length; i++) {
-									if (targets[i] != player)
-										targets[i].classList.add('target');
-								}
-
-
-								if (this._oncard2) this._oncard2(card, player);
-							}
-							return event;
-						};
-						Player.lose = function () {
-							var next = this._super.lose.apply(this, arguments);
-							var event = _status.event;
-							if (event.name == 'useCard') {
-								next.animate = true;
-								next.blameEvent = event;
-								event.throw = false;
-							}
-
-							return next;
-						};
-						Player.line = function (target, config) {
-							if (get.itemtype(target) == 'players') {
-								for (var i = 0; i < target.length; i++) {
-									this.line(target[i], config);
-								}
-							} else if (get.itemtype(target) == 'player') {
-								if (target == this)
-									return;
-
-								var player = this;
-								game.broadcast(function (player, target, config) {
-									player.line(target, config);
-								}, player, target, config);
-								game.addVideo('line', player, [target.dataset.position, config]);
-
-								player.checkBoundsCache(true);
-								target.checkBoundsCache(true);
-								var x1, y1;
-								var x2, y2;
-								var hand = dui.boundsCaches.hand;
-								if (player == game.me) {
-									hand.check();
-									x1 = hand.x + hand.width / 2;
-									y1 = hand.y;
-								} else {
-									x1 = player.cacheLeft + player.cacheWidth / 2;
-									y1 = player.cacheTop + player.cacheHeight / 2;
-								}
-
-								if (target == game.me) {
-									hand.check();
-									x2 = hand.x + hand.width / 2;
-									y2 = hand.y;
-								} else {
-									x2 = target.cacheLeft + target.cacheWidth / 2;
-									y2 = target.cacheTop + target.cacheHeight / 2;
-								}
-
-								game.linexy([x1, y1, x2, y2], config, true);
-							}
-						};
-						Player.checkBoundsCache = function (forceUpdate) {
-							var update;
-							var refer = dui.boundsCaches.arena;
-							refer.check();
-
-							if (this.cacheReferW != refer.width ||
-								this.cacheReferH != refer.height ||
-								this.cachePosition != this.dataset.position)
-								update = true;
-
-							this.cacheReferW = refer.width;
-							this.cacheReferH = refer.height;
-							this.cachePosition = this.dataset.position;
-							if (this.cacheLeft == null)
-								update = true;
-
-							if (update || forceUpdate) {
-								this.cacheLeft = this.offsetLeft;
-								this.cacheTop = this.offsetTop;
-								this.cacheWidth = this.offsetWidth;
-								this.cacheHeight = this.offsetHeight;
-							}
-						};
-						Player.queueCssAnimation = function (animation) {
-							var current = this.style.animation;
-							var animations = this._cssanimations;
-							if (animations == undefined) {
-								animations = [];
-								this._cssanimations = animations;
-								this.addEventListener('animationend', function (e) {
-									if (this.style.animationName != e.animationName)
-										return;
-
-									var current = this.style.animation;
-									var animations = this._cssanimations;
-									while (animations.length) {
-										this.style.animation = animations.shift();
-										if (this.style.animation != current)
-											return;
-
-										animations.current = this.style.animation;
-									}
-
-									animations.current = '';
-									this.style.animation = '';
-								});
-							}
-
-							if (animations.current || animations.length) {
-								animations.push(animation);
-								return;
-							}
-
-							animations.current = animation;
-							this.style.animation = animation;
-						};
-						Player.$draw = function (num, init, config) {
-							if (game.chess)
-								return this._super.$draw.call(this, num, init, config);
-
-							if (init !== false && init !== 'nobroadcast') {
-								game.broadcast(function (player, num, init, config) {
-									player.$draw(num, init, config);
-								}, this, num, init, config);
-							}
-
-							var cards;
-							var isDrawCard;
-							if (get.itemtype(num) == 'cards') {
-								cards = num.concat();
-								isDrawCard = true;
-							} else if (get.itemtype(num) == 'card') {
-								cards = [num];
-								isDrawCard = true;
-							} else if (typeof num == 'number') {
-								cards = new Array(num);
-							} else {
-								cards = new Array(1);
-							}
-
-							if (init !== false) {
-								if (isDrawCard) {
-									game.addVideo('drawCard', this, get.cardsInfo(cards));
-								} else {
-									game.addVideo('draw', this, num);
-								}
-							}
-
-							if (game.me == this)
-								return;
-
-							var fragment = document.createDocumentFragment();
-							var card;
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-								if (card == null)
-									card = dui.element.create('card thrown drawingcard');
-								else
-									card = card.copy('thrown', 'drawingcard', false);
-
-								card.fixed = true;
-								cards[i] = card;
-								fragment.appendChild(card);
-							}
-
-							var player = this;
-							dui.layoutDrawCards(cards, player, true);
-							ui.arena.appendChild(fragment);
-							dui.queueNextFrameTick(function () {
-								dui.layoutDrawCards(cards, player);
-								dui.delayRemoveCards(cards, 460, 220);
-							});
-						};
-						Player.$give = function (cards, target, log, record) {
-							var itemtype;
-							var duiMod = (cards.duiMod && game.me == target);
-							if (typeof cards == 'number') {
-								itemtype = 'number';
-								cards = new Array(cards);
-							} else {
-								itemtype = get.itemtype(cards);
-								if (itemtype == 'cards') {
-									cards = cards.concat();
-								} else if (itemtype == 'card') {
-									cards = [cards];
-								} else {
-									return;
-								}
-							}
-
-							if (record !== false) {
-								var cards2 = cards;
-								if (itemtype == 'number') {
-									cards2 = cards.length;
-									game.addVideo('give', this, [cards2, target.dataset.position]);
-								} else {
-									game.addVideo('giveCard', this, [get.cardsInfo(cards2), target.dataset.position]);
-								}
-
-								game.broadcast(function (source, cards2, target, record) {
-									source.$give(cards2, target, false, record);
-								}, this, cards2, target, record);
-							}
-
-							if (log != false) {
-								if (itemtype == 'number')
-									game.log(target, '从', this, '获得了' + get.cnNumber(cards.length) + '张牌');
-								else
-									game.log(target, '从', this, '获得了', cards);
-							}
-
-							if (this.$givemod) {
-								this.$givemod(cards, target);
-								return;
-							}
-
-							if (duiMod)
-								return;
-
-							var card;
-							var hand = dui.boundsCaches.hand;
-							hand.check();
-
-							var draws = [];
-							var player = this;
-							var fragment = document.createDocumentFragment();
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-								if (card) {
-									var cp = card.copy('card', 'thrown', 'gainingcard', false);
-									var hs = player == game.me;
-									if (hs) {
-										if (card.throwWith)
-											hs = card.throwWith == 'h' || card.throwWith == 's';
-										else
-											hs = card.parentNode == player.node.handcards1;
-									}
-
-									if (hs) {
-										cp.tx = Math.round(hand.x + card.tx);
-										cp.ty = Math.round(hand.y + 30 + card.ty);
-										cp.scaled = true;
-										cp.style.transform = 'translate(' + cp.tx + 'px,' + cp.ty + 'px) scale(' + hand.cardScale + ')';
-									} else {
-										draws.push(cp);
-									}
-									card = cp;
-								} else {
-									card = dui.element.create('card thrown gainingcard');
-									draws.push(card);
-								}
-
-								cards[i] = card;
-								cards[i].fixed = true;
-								fragment.appendChild(cards[i]);
-							}
-
-							if (draws.length)
-								dui.layoutDrawCards(draws, player);
-
-							ui.arena.appendChild(fragment);
-							dui.queueNextFrameTick(function () {
-								dui.layoutDrawCards(cards, target);
-								dui.delayRemoveCards(cards, 460, 220);
-							});
-						};
-						Player.$gain2 = function (cards, log) {
-							var type = get.itemtype(cards);
-							if (type != 'cards') {
-								if (type != 'card')
-									return;
-
-								type = 'cards';
-								cards = [cards];
-							}
-
-							if (log === true)
-								game.log(this, '获得了', cards);
-
-							game.broadcast(function (player, cards) {
-								player.$gain2(cards);
-							}, this, cards);
-
-							var gains = [];
-							var draws = [];
-
-							var card;
-							var clone;
-							for (var i = 0; i < cards.length; i++) {
-								clone = cards[i].clone;
-								card = cards[i].copy('thrown', 'gainingcard');
-								card.fixed = true;
-								if (clone && clone.parentNode == ui.arena) {
-									card.scaled = true;
-									card.style.transform = clone.style.transform;
-									gains.push(card);
-								} else {
-									draws.push(card);
-								}
-							}
-
-							if (gains.length)
-								game.addVideo('gain2', this, get.cardsInfo(gains));
-
-							if (draws.length)
-								game.addVideo('drawCard', this, get.cardsInfo(draws));
-
-							if (cards.duiMod && this == game.me)
-								return;
-
-							cards = gains.concat(draws);
-							dui.layoutDrawCards(draws, this, true);
-
-							var player = this;
-							var fragment = document.createDocumentFragment();
-							for (var i = 0; i < cards.length; i++)
-								fragment.appendChild(cards[i]);
-
-							ui.arena.appendChild(fragment);
-							dui.queueNextFrameTick(function () {
-								dui.layoutDrawCards(cards, player);
-								dui.delayRemoveCards(cards, 460, 220);
-							});
-						};
-						Player.$damage = function (source) {
-							if (get.itemtype(source) == 'player') {
-								game.addVideo('damage', this, source.dataset.position);
-							} else {
-								game.addVideo('damage', this);
-							}
-							game.broadcast(function (player, source) {
-								player.$damage(source);
-							}, this, source);
-
-							this.queueCssAnimation('player-hurt 0.3s');
-						};
-						Player.$throw = function (cards, time, record, nosource) {
-							var itemtype;
-							var duiMod = (cards.duiMod && game.me == this && !nosource);
-							if (typeof cards == 'number') {
-								itemtype = 'number';
-								cards = new Array(cards);
-							} else {
-								itemtype = get.itemtype(cards);
-								if (itemtype == 'cards') {
-									cards = cards.concat();
-								} else if (itemtype == 'card') {
-									cards = [cards];
-								} else {
-									return;
-								}
-							}
-
-							var card;
-							var clone;
-							var player = this;
-							var hand = dui.boundsCaches.hand;
-							hand.check();
-
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-								if (card) {
-									clone = card.copy('thrown');
-									if (duiMod && (card.throwWith == 'h' || card.throwWith == 's')) {
-										clone.tx = Math.round(hand.x + card.tx);
-										clone.ty = Math.round(hand.y + 30 + card.ty);
-										clone.scaled = true;
-										clone.throwordered = true;
-										clone.style.transform = 'translate(' + clone.tx + 'px,' + clone.ty + 'px) scale(' + hand.cardScale + ')';
-									}
-									card = clone;
-								} else {
-									card = dui.element.create('card infohidden infoflip');
-									card.moveTo = lib.element.card.moveTo;
-									card.moveDelete = lib.element.card.moveDelete;
-								}
-
-								cards[i] = card;
-							}
-
-							if (record !== false) {
-								if (record !== 'nobroadcast') {
-									game.broadcast(function (player, cards, time, record, nosource) {
-										player.$throw(cards, time, record, nosource);
-									}, this, cards, 0, record, nosource);
-								}
-
-								game.addVideo('throw', this, [get.cardsInfo(cards), 0, nosource]);
-							}
-
-							if (duiMod && cards.length > 2) {
-								cards.sort(function (a, b) {
-									if (a.tx == undefined && b.tx == undefined)
-										return 0;
-
-									if (a.tx == undefined)
-										return duicfg.rightLayout ? -1 : 1;
-
-									if (b.tx == undefined)
-										return duicfg.rightLayout ? 1 : -1;
-
-									return b.tx - a.tx;
-								});
-							}
-
-							for (var i = 0; i < cards.length; i++)
-								player.$throwordered2(cards[i], nosource);
-
-							if (game.chess)
-								this.chessFocus();
-
-							return cards[cards.length - 1];
-						};
-						Player.$throwordered2 = function (card, nosource) {
-							if (_status.connectMode)
-								ui.todiscard = [];
-
-							if (card.throwordered == undefined) {
-								var x, y;
-								var bounds = dui.boundsCaches.arena;
-								if (!bounds.updated)
-									bounds.update();
-
-								this.checkBoundsCache();
-								if (nosource) {
-									x = ((bounds.width - bounds.cardWidth) / 2 - bounds.width * 0.08);
-									y = ((bounds.height - bounds.cardHeight) / 2);
-								} else {
-									x = ((this.cacheWidth - bounds.cardWidth) / 2 + this.cacheLeft);
-									y = ((this.cacheHeight - bounds.cardHeight) / 2 + this.cacheTop);
-								}
-
-								x = Math.round(x);
-								y = Math.round(y);
-
-								card.tx = x;
-								card.ty = y;
-								card.scaled = true;
-								card.classList.add('thrown');
-								card.style.transform = 'translate(' + x + 'px, ' + y + 'px)' + 'scale(' + bounds.cardScale + ')';
-							} else {
-								card.throwordered = undefined;
-							}
-
-							if (card.fixed)
-								return ui.arena.appendChild(card);
-
-							var before;
-							for (var i = 0; i < ui.thrown; i++) {
-								if (ui.thrown[i].parentNode == ui.arena) {
-									before = ui.thrown[i];
-									break;
-								}
-							}
-
-							var tagNode = card.querySelector('.used-info');
-							if (tagNode == null)
-								tagNode = card.appendChild(dui.element.create('used-info'));
-
-							card.$usedtag = tagNode;
-							ui.thrown.unshift(card);
-							if (before)
-								ui.arena.insertBefore(before, card);
-							else
-								ui.arena.appendChild(card);
-
-							dui.tryAddPlayerCardUseTag(card, this, _status.event);
-							dui.queueNextFrameTick(dui.layoutDiscard, dui);
-							return card;
-						};
-						Player.$phaseJudge = function (card) {
-							game.addVideo('phaseJudge', this, get.cardInfo(card));
-							this.$throw(card);
-							dui.delay(451);
-						};
-						return Player;
-					})({});
 
 					var EventContent = (function (EventContent) {
 						EventContent.changeHp = function () {
@@ -2063,170 +1085,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								event.result.result = event._result;
 							}
 						};
-						EventContent.equip = function () {
-							"step 0"
-							var owner = get.owner(card);
-							if (owner) {
-								event.owner = owner;
-								var next = owner.lose(card, ui.special, 'visible').set('type', 'equip').set('getlx', false);
-								next.animate = true;
-								next.blameEvent = event;
-							} else if (get.position(card) == 'c') event.updatePile = true;
-
-							"step 1"
-							if (event.cancelled) {
-								event.finish();
-								return;
-							}
-							if (card.destroyed) {
-								if (player.hasSkill(card.destroyed)) {
-									delete card.destroyed;
-								} else {
-									event.finish();
-									return;
-								}
-							} else if (event.owner) {
-								if (event.owner.getCards('hejsx').contains(card)) {
-									event.finish();
-									return;
-								}
-							}
-							if (event.draw) {
-								game.delay(0, 300);
-								player.$draw(card);
-							}
-							"step 2"
-							if (card.clone)
-								player.$gain2(card);
-							player.equiping = true;
-							"step 3"
-							var info = get.info(card, false);
-							var next = game.createEvent('replaceEquip');
-							next.player = player;
-							next.card = card;
-							next.setContent(info.replaceEquip || 'replaceEquip');
-							"step 4"
-							var info = get.info(card, false);
-							if (get.itemtype(result) == 'cards') {
-								player.lose(result, false, 'visible').set('type', 'equip').set('getlx', false).swapEquip = true;
-								if (info.loseThrow) {
-									player.$throw(result, 1000);
-								}
-								event.swapped = true;
-							}
-							"step 5"
-							// if (player.isMin() || player.countCards('e', {
-							// 	subtype: get.subtype(card)
-							// })) {
-							if (player.isMin() || !player.canEquip(card)) {
-								event.finish();
-								game.cardsDiscard(card);
-								delete player.equiping;
-								return;
-							}
-							var subtype = get.subtype(card);
-							if (subtype == 'equip6') subtype = 'equip3';
-							game.broadcastAll(function (type) {
-								if (lib.config.background_audio) {
-									game.playAudio('effect', type);
-								}
-							}, subtype);
-							player.$equip(card);
-							game.addVideo('equip', player, get.cardInfo(card));
-							if (event.log != false) game.log(player, '装备了', card);
-							if (event.updatePile) game.updateRoundNumber();
-							"step 6"
-							var info = get.info(card, false);
-							if (info.onEquip && (!info.filterEquip || info.filterEquip(card, player))) {
-								if (Array.isArray(info.onEquip)) {
-									for (var i = 0; i < info.onEquip.length; i++) {
-										var next = game.createEvent('equip_' + card.name);
-										next.setContent(info.onEquip[i]);
-										next.player = player;
-										next.card = card;
-									}
-								} else {
-									var next = game.createEvent('equip_' + card.name);
-									next.setContent(info.onEquip);
-									next.player = player;
-									next.card = card;
-								}
-								if (info.equipDelay != false) game.delayx();
-							}
-							delete player.equiping;
-							if (event.delay) {
-								game.delayx();
-							}
-						};
-						EventContent.respond = function () {
-							"step 0"
-							var cardaudio = true;
-							if (event.skill) {
-								if (lib.skill[event.skill].audio) {
-									cardaudio = false;
-								}
-								player.logSkill(event.skill);
-								player.checkShow(event.skill, true);
-								if (lib.skill[event.skill].onrespond && !game.online) {
-									lib.skill[event.skill].onrespond(event, player);
-								}
-							} else if (!event.nopopup) player.tryCardAnimate(card, card.name, 'wood');
-							if (cardaudio && event.getParent(3).name == 'useCard') game.broadcastAll((player, card) => {
-								if (!lib.config.background_audio) return;
-								const sex = player.sex == 'female' ? 'female' : 'male', audio = lib.card[card.name].audio;
-								if (typeof audio == 'string') {
-									const audioInfo = audio.split(':');
-									if (audio.indexOf('db:') == 0) game.playAudio(`${audioInfo[0]}:${audioInfo[1]}`, audioInfo[2], `${card.name}_${sex}.${audioInfo[3] || 'mp3'}`);
-									else if (audio.indexOf('ext:') == 0) game.playAudio(`${audioInfo[0]}:${audioInfo[1]}`, `${card.name}_${sex}.${audioInfo[2] || 'mp3'}`);
-									else game.playAudio('card', sex, `${audioInfo[0]}.${audioInfo[1] || 'mp3'}`);
-								}
-								else game.playAudio('card', sex, card.name);
-							}, player, card);
-							if (event.skill) {
-								if (player.stat[player.stat.length - 1].skill[event.skill] == undefined) {
-									player.stat[player.stat.length - 1].skill[event.skill] = 1;
-								} else {
-									player.stat[player.stat.length - 1].skill[event.skill]++;
-								}
-								var sourceSkill = get.info(event.skill).sourceSkill;
-								if (sourceSkill) {
-									if (player.stat[player.stat.length - 1].skill[sourceSkill] == undefined) {
-										player.stat[player.stat.length - 1].skill[sourceSkill] = 1;
-									} else {
-										player.stat[player.stat.length - 1].skill[sourceSkill]++;
-									}
-								}
-							}
-							if (cards.length && (cards.length > 1 || cards[0].name != card.name)) {
-								game.log(player, '打出了', card, '（', cards, '）');
-							} else {
-								game.log(player, '打出了', card);
-							}
-							player.actionHistory[player.actionHistory.length - 1].respond.push(event);
-							var cards2 = cards.concat();
-							if (cards2.length) {
-								var next = player.lose(cards2, ui.ordering, 'visible');
-								cards2.removeArray(next.cards);
-								if (event.noOrdering)
-									next.noOrdering = true;
-
-								if (event.animate != false && event.throw !== false) {
-									next.animate = true;
-									next.blameEvent = event;
-								}
-
-								if (cards2.length) {
-									var next2 = game.cardsGotoOrdering(cards2);
-									if (event.noOrdering)
-										next2.noOrdering = true;
-
-									player.$throw(cards2);
-								}
-							}
-							event.trigger('respond');
-							"step 1"
-							game.delayx(0.5);
-						};
 						EventContent.gameDraw = function () {
 							"step 0"
 							if (_status.brawl && _status.brawl.noGameDraw)
@@ -2251,7 +1109,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								player = player.next;
 							} while (player != end);
 							event.changeCard = get.config('change_card');
-							if (_status.connectMode || (lib.config.mode == 'doudizhu' && _status.mode == 'online') || lib.config.mode != 'identity' && lib.config.mode != 'guozhan' && lib.config.mode != 'doudizhu' && lib.config.mode != 'huanhuazhizhan' && lib.config.mode != 'th_mougong') {
+							if (_status.connectMode || (lib.config.mode == 'doudizhu' && _status.mode == 'online') || lib.config.mode != 'identity' && lib.config.mode != 'guozhan' && lib.config.mode != 'doudizhu' && lib.config.mode != 'huanhuazhizhan') {
 								event.changeCard = 'disabled';
 							}
 							"step 1"
@@ -2401,288 +1259,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								if (!get.owner(event.result.card)) {
 									if (event.position != ui.discardPile)
 										event.position.appendChild(event.result.card);
-								}
-							}
-						};
-						EventContent.phase = function () {
-							"step 0"
-							player.phaseZhunbei();
-							"step 1"
-							player.phaseJudge();
-							"step 2"
-							player.phaseDraw();
-							"step 3"
-							player.phaseUse();
-							if (!player.noPhaseDelay) {
-								if (player == game.me)
-									game.delay();
-								else
-									game.delayx();
-							}
-							"step 4"
-							game.broadcastAll(function () {
-								if (ui.tempnowuxie) {
-									ui.tempnowuxie.close();
-									delete ui.tempnowuxie;
-								}
-							});
-							player.phaseDiscard();
-							if (!player.noPhaseDelay)
-								game.delayx();
-
-							delete player._noSkill;
-							"step 5"
-							player.phaseJieshu();
-						};
-						EventContent.lose = function () {
-							"step 0"
-							if (event.insert_card && event.position == ui.cardPile)
-								event.cards.reverse();
-
-							event.stockcards = cards.concat();
-							var hs = [], es = [], js = [], ss = [], xs = [];
-							var unmarks = [];
-							var cards = event.cards;
-							var gainmap = event.gaintag_map = {};
-							var be = event.blameEvent;
-							var pe = event.getParent();
-							var pename = pe.name;
-
-							if (be == undefined && (pename != 'discard' || event.type != 'discard') && (pename != 'loseToDiscardpile' || event.type != 'loseToDiscardpile')) {
-								event.animate = false;
-								event.delay = false;
-							} else {
-								if (pe.delay === false)
-									event.delay = false;
-
-								if (event.animate == undefined)
-									event.animate = pe.animate;
-							}
-
-
-							var card, pileNode;
-							var hej = player.getCards('hejsx');
-							for (var i = 0; i < cards.length; i++) {
-								card = cards[i];
-
-								pileNode = card.parentNode;
-								if (!hej.contains(card)) {
-									cards.splice(i--, 1);
-									continue;
-								} else if (pileNode) {
-									if (pileNode.classList.contains('equips')) {
-										es.push(card);
-										card.throwWith = card.original = 'e';
-									} else if (pileNode.classList.contains('judges')) {
-										js.push(card);
-										card.throwWith = card.original = 'j';
-									} else if (pileNode.classList.contains('expansions')) {
-										xs.push(card);
-										card.throwWith = card.original = 'x';
-										if (card.gaintag && card.gaintag.length) unmarks.addArray(card.gaintag);
-									} else if (pileNode.classList.contains('handcards')) {
-										if (card.classList.contains('glows')) {
-											ss.push(card);
-											card.throwWith = card.original = 's';
-										} else {
-											hs.push(card);
-											card.throwWith = card.original = 'h';
-										}
-									} else {
-										card.throwWith = card.original = null;
-									}
-								}
-								if (card.gaintag && card.gaintag.length) {
-									gainmap[card.cardid] = card.gaintag.concat();
-									card.removeGaintag(true);
-								}
-
-								var info = lib.card[card.name];
-								if (info.destroy || card._destroy) {
-									card.delete();
-									card.destroyed = info.destroy || card._destroy;
-								} else if (event.position) {
-									if (_status.discarded) {
-										if (event.position == ui.discardPile) {
-											_status.discarded.add(card);
-										} else {
-											_status.discarded.remove(card);
-										}
-									}
-
-									if (event.insert_index) {
-										card.fix();
-										event.position.insertBefore(card, event.insert_index(event, card));
-									} else if (event.insert_card) {
-										card.fix();
-										event.position.insertBefore(card, event.position.firstChild);
-									} else {
-										if (event.position == ui.cardPile)
-											card.fix();
-
-										event.position.appendChild(card);
-									}
-								} else {
-									card.remove();
-								}
-
-								card.recheck();
-								card.classList.remove('glow');
-								card.classList.remove('glows');
-							}
-
-							if (player == game.me)
-								dui.queueNextFrameTick(dui.layoutHand, dui);
-
-							ui.updatej(player);
-							game.broadcast(function (player, cards, num) {
-								for (var i = 0; i < cards.length; i++) {
-									cards[i].classList.remove('glow');
-									cards[i].classList.remove('glows');
-									cards[i].fix();
-									cards[i].remove();
-								}
-
-								if (player == game.me)
-									ui.updatehl();
-
-								ui.updatej(player);
-								_status.cardPileNum = num;
-							}, player, cards, ui.cardPile.childNodes.length);
-							if (event.animate != false) {
-								pe.discardid = lib.status.videoId++;
-								game.broadcastAll(function (player, cards, id, visible) {
-									cards.duiMod = true;
-									player.$throw(cards, null, 'nobroadcast');
-									var cardnodes = [];
-									cardnodes._discardtime = get.time();
-									for (var i = 0; i < cards.length; i++) {
-										if (cards[i].clone) {
-											cardnodes.push(cards[i].clone);
-											if (!visible) {
-												cards[i].clone.classList.add('infohidden');
-												cards[i].clone.classList.add('infoflip');
-											}
-										}
-									}
-									ui.todiscard[id] = cardnodes;
-								}, player, cards, pe.discardid, event.visible);
-								if (lib.config.sync_speed && cards[0] && cards[0].clone) {
-									var evt;
-									if (pe.delay != false)
-										evt = pe;
-									else if (pe.getParent().discardTransition)
-										evt = pe.getParent();
-
-									if (evt) {
-										evt.discardTransition = undefined;
-										var waitingForTransition = get.time();
-										evt.waitingForTransition = waitingForTransition;
-										cards[0].clone.listenTransition(function () {
-											if (_status.waitingForTransition == waitingForTransition && _status.paused)
-												game.resume();
-
-											evt.waitingForTransition = undefined;
-										});
-									}
-								}
-							}
-
-							game.addVideo('lose', player, [get.cardsInfo(hs), get.cardsInfo(es), get.cardsInfo(js), get.cardsInfo(ss), get.cardsInfo(xs)]);
-							event.cards2 = hs.concat(es);
-							player.getHistory('lose').push(event);
-							game.getGlobalHistory().cardMove.push(event);
-							player.update();
-							game.addVideo('loseAfter', player);
-							event.num = 0;
-							if (event.position == ui.ordering) {
-								var evt = event.relatedEvent || event.getParent();
-								if (!evt.orderingCards) evt.orderingCards = [];
-								if (!event.noOrdering && !event.cardsOrdered) {
-									event.cardsOrdered = true;
-									var next = game.createEvent('orderingDiscard', false, evt.getParent());
-									next.relatedEvent = evt;
-									next.setContent('orderingDiscard');
-								}
-								if (!event.noOrdering) {
-									evt.orderingCards.addArray(cards);
-									evt.orderingCards.addArray(ss);
-								}
-							} else if (event.position == ui.cardPile) {
-								game.updateRoundNumber();
-							}
-							if (event.toRenku) _status.renku.addArray(cards);
-							if (unmarks.length) {
-								for (var i of unmarks) {
-									player[(lib.skill[i] && lib.skill[i].mark || player.hasCard((card) => card.hasGaintag(i), 'x')) ? 'markSkill' : 'unmarkSkill'](i);
-								}
-							}
-							event.hs = hs;
-							event.es = es;
-							event.js = js;
-							event.ss = ss;
-							event.xs = xs;
-							"step 1"
-							if (num < cards.length) {
-								if (event.es.contains(cards[num])) {
-									event.loseEquip = true;
-									player.removeEquipTrigger(cards[num]);
-									var info = get.info(cards[num]);
-									if (info.onLose && (!info.filterLose || info.filterLose(cards[num], player))) {
-										event.goto(2);
-										return;
-									}
-								}
-								event.num++;
-								event.redo();
-							} else {
-								if (event.loseEquip) {
-									player.addEquipTrigger();
-								}
-								event.goto(3);
-							}
-							"step 2"
-							var info = get.info(cards[num]);
-							if (info.loseDelay != false && (player.isAlive() || info.forceDie)) {
-								player.popup(cards[num].name);
-								game.delayx();
-							}
-							if (Array.isArray(info.onLose)) {
-								for (var i = 0; i < info.onLose.length; i++) {
-									var next = game.createEvent('lose_' + cards[num].name);
-									next.setContent(info.onLose[i]);
-									if (info.forceDie) next.forceDie = true;
-									next.player = player;
-									next.card = cards[num];
-								}
-							} else {
-								var next = game.createEvent('lose_' + cards[num].name);
-								next.setContent(info.onLose);
-								next.player = player;
-								if (info.forceDie) next.forceDie = true;
-								next.card = cards[num];
-							}
-							event.num++;
-							event.goto(1);
-							"step 3"
-							if (event.toRenku) {
-								if (_status.renku.length > 6) {
-									var cards = _status.renku.splice(0, _status.renku.length - 6);
-									game.log(cards, '从仁库进入了弃牌堆');
-									game.cardsDiscard(cards).set('outRange', true).fromRenku = true;
-								}
-								game.updateRenku();
-							}
-							"step 4"
-							var evt = event.getParent();
-							if (evt.name != 'discard' && event.type != 'discard' && evt.name != 'loseToDiscardpile' && event.type != 'loseToDiscardpile') return;
-							if (event.animate === false || event.delay === false) return;
-							if (evt.delay != false) {
-								if (evt.waitingForTransition) {
-									_status.waitingForTransition = evt.waitingForTransition;
-									game.pause();
-								} else {
-									game.delayx();
 								}
 							}
 						};
@@ -3064,9 +1640,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						return Game;
 					})({});
 
-					overrides(lib.element.card, Card);
-					overrides(lib.element.event, Event);
-					overrides(lib.element.player, Player);
 					overrides(lib.element.content, EventContent);
 					overrides(lib.skill, Skill);
 					overrides(ui.click, Click);
@@ -3327,11 +1900,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									ui.updatem(this);
 									return nodeMark;
 								},
-								setSeatNum: function () {
-									base.lib.element.player.setSeatNum.apply(this, arguments);
-									this.seat = this.getSeatNum();
-									this.node.seat.innerHTML = get.cnNumber(this.seat, true);
-								},
 								markSkillCharacter: function (id, target, name, content) {
 									if (typeof target == 'object') target = target.name;
 									game.broadcastAll(function (player, target, name, content, id) {
@@ -3528,61 +2096,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									}
 
 									return this;
-								},
-
-								$dieAfter: function () {
-									this.stopDynamic();
-
-									if (!decadeUI.config.playerDieEffect) {
-										if (base.lib.element.player.$dieAfter) base.lib.element.player.$dieAfter.apply(this, arguments);
-										return;
-									}
-
-									if (!this.node.dieidentity) this.node.dieidentity = ui.create.div('died-identity', this);
-									this.node.dieidentity.classList.add('died-identity');
-
-									var that = this;
-									var image = new Image();
-									var identity = decadeUI.getPlayerIdentity(this);
-									var url = decadeUIPath + 'image/decoration/dead_' + identity + '.png';
-									image.onerror = function () {
-										that.node.dieidentity.innerHTML = decadeUI.getPlayerIdentity(that, that.identity, true) + '<br>阵亡';
-									};
-
-									that.node.dieidentity.innerHTML = '';
-									that.node.dieidentity.style.backgroundImage = 'url("' + url + '")';
-									image.src = url;
-									setTimeout(function () {
-										var rect = that.getBoundingClientRect();
-										decadeUI.animation.playSpine('effect_zhenwang', {
-											x: rect.left + rect.width / 2 - 7,
-											y: decadeUI.get.bodySize().height - rect.top - rect.height / 2 + 1,
-											scale: 0.8,
-										});
-									}, 250);
-								},
-
-								$skill: function (name, type, color, avatar) {
-									if (!decadeUI.config.gameAnimationEffect || !decadeUI.animation.gl) return base.lib.element.player.$skill.apply(this, arguments);
-									var _this = this;
-									if (typeof type != 'string') type = 'legend';
-
-									game.addVideo('skill', this, [name, type, color, avatar]);
-									game.broadcastAll(function (player, type, name, color, avatar) {
-										if (window.decadeUI == void 0) {
-											game.delay(2.5);
-											if (name) player.$fullscreenpop(name, color, avatar);
-											return;
-										}
-
-										decadeUI.delay(2500);
-										if (name) decadeUI.effect.skill(player, name, avatar);
-									}, _this, type, name, color, avatar);
-								},
-
-								$syncExpand: function (map) {
-									if (base.lib.element.player.$syncExpand) base.lib.element.player.$syncExpand.apply(this, arguments);
-									ui.equipSolts.back.innerHTML = new Array(5 + Object.values(this.expandedSlots).reduce((previousValue, currentValue) => previousValue + currentValue, 0)).fill('<div></div>').join('');
 								}
 							},
 
@@ -4097,50 +2610,11 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							decadeUI.delay(100);
 							return base.game.gameDraw.apply(game, arguments);
 						},
-
-						loop: function () {
-							if (game.loopLocked) return;
-							if (decadeUI.eventDialog) {
-								decadeUI.game.wait();
-								return;
-							}
-
-							game.loopLocked = true;
-							var loop;
-							do {
-								loop = decadeUI.game.loop(_status);
-								game.looping = false;
-							} while (loop);
-							game.loopLocked = false;
-						},
 					};
-
-					ride.get = {
-						objtype: function (obj) {
-							obj = Object.prototype.toString.call(obj);
-							switch (obj) {
-								case '[object Array]':
-									return 'array';
-								case '[object Object]':
-									return 'object';
-								case '[object HTMLDivElement]':
-									return 'div';
-								case '[object HTMLTableElement]':
-									return 'table';
-								case '[object HTMLTableRowElement]':
-									return 'tr';
-								case '[object HTMLTableCellElement]':
-									return 'td';
-								case '[object HTMLBodyElement]':
-									return 'td';
-							}
-						},
-					}
 
 					override(lib, ride.lib);
 					override(ui, ride.ui);
 					override(game, ride.game);
-					override(get, ride.get);
 
 					decadeUI.get.extend(decadeUI, duilib);
 					if (decadeModule.modules)
@@ -4157,18 +2631,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					var createPauseFunction = ui.create.pause;
 					var createMenuFunction = ui.create.menu;
 					var initCssstylesFunction = lib.init.cssstyles;
-					var initLayoutFunction = lib.init.layout;
-
-					var cardCopyFunction = lib.element.card.copy;
-					var playerInitFunction = lib.element.player.init;
-					var playerUninitFunction = lib.element.player.uninit;
-					var playerAddSkillFunction = lib.element.player.addSkill;
-					var playerRemoveSkillFunction = lib.element.player.removeSkill
-					var playerUpdateFunction = lib.element.player.update;
-					var playerChooseTargetFunction = lib.element.player.chooseTarget;
-					var playerThrowFunction = lib.element.player.$throw;
-					var playerDrawFunction = lib.element.player.$draw;
-					var playerDieFlipFunction = lib.element.player.$dieflip;
 
 					ui.updatejm = function (player, nodes, start, inv) {
 						if (typeof start != 'number') start = 0;
@@ -4231,16 +2693,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 
 						return skills;
-					};
-
-
-					game.updateRoundNumber = () => {
-						base.game.updateRoundNumber();
-						game.broadcastAll((num1, num2) => {
-							if (ui.cardPileNumber && window.decadeUI)
-								ui.cardPileNumber.textContent = `牌堆${num2} 第${num1}轮`;
-
-						}, game.roundNumber, ui.cardPile.childNodes.length);
 					};
 
 					/**
@@ -5110,20 +3562,10 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						setTimeout(relayout, 500);
 					};
 
-					lib.skill._usecard = {
-						trigger: { global: 'useCardAfter' },
-						forced: true,
-						popup: false,
-						priority: -100,
-						filter: function (event) {
-							return ui.clear.delay === 'usecard' && event.card.name != 'wuxie';
-						},
-						content: function () {
-							ui.clear.delay = false;
-							game.broadcastAll(function () {
-								ui.clear();
-							});
-						}
+					lib.skill._usecard.filter = event => ui.clear.delay === 'usecard' && event.card.name != 'wuxie';
+					lib.skill._usecard.content = () => {
+						ui.clear.delay = false;
+						game.broadcastAll(ui.clear);
 					};
 
 					lib.skill._decadeUI_usecardBegin = {
@@ -5856,271 +4298,20 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						game.updateRoundNumber()
 					};
 
-					lib.element.player.setIdentity = function (identity) {
-						if (!identity) identity = this.identity;
 
-						this.node.identity.dataset.color = identity;
-						if (get.mode() == 'guozhan') {
-							if (identity == 'ye' && get.is.jun(this)) this.identity = identity = lib.character[this.name1][1];
-							this.group = identity;
-							this.node.identity.firstChild.innerHTML = get.translation(identity);
-							return this;
-						}
-
-						if (get.is.jun(this)) {
-							this.node.identity.firstChild.innerHTML = '君';
-						} else {
-							this.node.identity.firstChild.innerHTML = get.translation(identity);
-						}
-
-						return this;
-
-						// if(!identity) identity = this.identity;
-
-						// var identityColor = identity;
-						// var identityNode = this.node.identity;
-
-						// switch(get.mode()){
-						// case 'identity':
-						// if (_status.mode == 'purple' && identity.indexOf('cai') >= 0) {
-						// if (this.identity[0] == 'r') {
-						// identity = 'cai';
-						// } else {
-						// identity = 'cai2';
-						// this.classList.add('opposite-camp');
-						// this.finalSide = false;
-						// }
-
-						// }
-						// break;
-
-						// case 'guozhan':
-						// if (identity == 'ye' && get.is.jun(this)) {
-						// this.identity = identity = lib.character[this.name1][1];
-						// }
-						// this.group = identity;
-						// break;
-						// case 'versus':
-						// this.finalSide = this.side;
-						// if (this.side === false) this.classList.add('opposite-camp');
-						// break;
-						// }
-
-						// this.finalShownIdentity = identity;
-						// identityNode.dataset.color = identityColor;
-						// if (lib.huanhuazhizhan) return this;
-
-						// if (decadeUI.config.campIdentityImageMode){
-						// var that = this;
-						// var image = new Image();
-						// var url = extensionPath + 'image/decoration/identity_' + decadeUI.getPlayerIdentity(that, identity) + '.png';
-						// that.finalShownIdentity = identity;
-
-						// image.identity = identity;
-						// image.onerror = function(){
-						// if (this.identity != that.finalShownIdentity) return;
-
-						// that.node.identity.firstChild.style.opacity = '';
-						// that.node.identity.firstChild.innerHTML = get.mode() == 'boss' ? get.translation(that.finalShownIdentity) :
-						// decadeUI.getPlayerIdentity(that, that.finalShownIdentity, true, true);
-						// };
-
-						// that.node.identity.firstChild.innerHTML = '';
-						// that.node.identity.firstChild.style.opacity = '0';
-						// that.node.identity.style.backgroundImage = 'url("' + url + '")';
-						// image.src = url;
-
-						// } else {
-						// this.node.identity.firstChild.innerHTML = get.is.jun(this) ? '君' : get.translation(identity);
-						// }
-
-						// return this;
-					};
-
-					lib.element.player.addSkill = function (skill) {
-						var skill = playerAddSkillFunction.apply(this, arguments);
-						if (!Array.isArray(skill)) {
-							var character1 = lib.character[this.name];
-							var character2 = lib.character[this.name2];
-							if ((!character1 || !character1[3].contains(skill)) && (!character2 || !character2[3].contains(skill))) {
-								this.node.gainSkill.gain(skill);
+					Mixin.replace(
+						'lib.element.content.respond',
+						/(?=\s*var directDiscard=\[\];)/,
+						(next, event) => {
+							if (event.animate != false && event.throw !== false) {
+								next.animate = true;
+								next.blameEvent = event;
 							}
-						}
-
-						return skill;
-					};
-
-					lib.element.player.removeSkill = function (skill) {
-						var skill = playerRemoveSkillFunction.apply(this, arguments);
-						if (!Array.isArray(skill)) {
-							if (this.node.gainSkill.skills && this.node.gainSkill.skills.contains(skill)) {
-								this.node.gainSkill.lose(skill);
-							}
-						}
-
-						return skill;
-					};
-
-					lib.element.player.getState = function () {
-						var state = base.lib.element.player.getState.apply(this, arguments);
-						state.seat = this.seat;
-						return state;
-					};
-
-					lib.element.player.setModeState = function (info) {
-						if (info && info.seat) {
-							if (!this.node.seat) this.node.seat = decadeUI.element.create('seat', this);
-							this.node.seat.innerHTML = get.cnNumber(info.seat, true);
-						}
-
-						if (base.lib.element.player.setModeState) {
-							return base.lib.element.player.setModeState.apply(this, arguments);
-						} else {
-							return this.init(info.name, info.name2);
-						}
-					};
-
-					lib.element.player.prompt = function (str, nature) {
-						var node;
-						if (this.node.prompt) {
-							node = this.node.prompt;
-							node.innerHTML = '';
-							node.className = 'damage normal-font damageadded';
-						} else {
-							node = ui.create.div('.damage.normal-font', this);
-							this.node.prompt = node;
-							ui.refresh(node);
-							node.classList.add('damageadded');
-						}
-						node.innerHTML = str;
-						node.dataset.text = node.innerText;
-						node.dataset.nature = nature || 'soil';
-						node.style.animation = 'open-fade-in 0.6s';
-					};
-
-					lib.element.player.$damagepop = function (num, nature, font, nobroadcast) {
-						if (typeof num == 'number' || typeof num == 'string') {
-							game.addVideo('damagepop', this, [num, nature, font]);
-							if (nobroadcast !== false) {
-								game.broadcast(function (player, num, nature, font) {
-									player.$damagepop(num, nature, font);
-								}, this, num, nature, font);
-							}
-
-							var node;
-							if (this.popupNodeCache && this.popupNodeCache.length) {
-								node = this.popupNodeCache.shift();
-							} else {
-								node = decadeUI.element.create('damage');
-							}
-
-							if (font) {
-								node.classList.add('normal-font');
-							} else {
-								node.classList.remove('normal-font');
-							}
-
-							if (typeof num == 'number') {
-								node.popupNumber = num;
-								if (num == Infinity) {
-									num = '+∞'
-								} else if (num == -Infinity) {
-									num = '-∞';
-								} else if (num > 0) {
-									num = '+' + num;
-								}
-
-							} else {
-								node.popupNumber = null;
-							}
-
-							node.innerHTML = num;
-							node.dataset.text = node.innerText;
-							node.nature = nature || 'soil';
-							this.damagepopups.push(node);
-						}
-
-						if (this.damagepopups.length && !this.damagepopLocked) {
-							var node = this.damagepopups.shift();
-							this.damagepopLocked = true;
-							if (this != node.parentNode) this.appendChild(node);
-
-							var player = this;
-							if (typeof node.popupNumber == 'number') {
-								var popupNum = node.popupNumber;
-								if (popupNum < 0) {
-									switch (node.nature) {
-										case 'thunder':
-											if (popupNum <= -2) {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play6' }, { scale: 0.8, parent: player });
-											} else {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play5' }, { scale: 0.8, parent: player });
-											}
-											break;
-										case 'fire':
-											if (popupNum <= -2) {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play4' }, { scale: 0.8, parent: player });
-											} else {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play3' }, { scale: 0.8, parent: player });
-											}
-											break;
-										case 'water':
-											break;
-										default:
-											if (popupNum <= -2) {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play2' }, { scale: 0.8, parent: player });
-											} else {
-												decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play1' }, { scale: 0.8, parent: player });
-											}
-											break;
-									}
-								} else {
-									if (node.nature == 'wood') {
-										decadeUI.animation.playSpine('effect_zhiliao', { scale: 0.7, parent: player });
-									}
-								}
-							}
-
-							node.style.animation = 'open-fade-in-out 1.2s';
-							setTimeout(function (player, node) {
-								if (!player.popupNodeCache) player.popupNodeCache = [];
-								node.style.animation = '';
-								player.popupNodeCache.push(node);
-							}, 1210, player, node);
-
-							setTimeout(function (player) {
-								player.damagepopLocked = false;
-								player.$damagepop();
-							}, 500, player);
-						}
-					};
-
-					lib.element.player.$dieflip = function () {
-						if (!decadeUI.config.playerDieEffect && playerDieFlipFunction) playerDieFlipFunction.apply(this, arguments);
-					};
-
-					Object.defineProperties(lib.element.player, {
-						$dieAfter: {
-							configurable: true,
-							get: function () {
-								return ride.lib.element.player.$dieAfter;
-							},
-							set: function (value) {
-								base.lib.element.player.$dieAfter = value;
-							}
-						}
-					});
-
-					lib.element.player.$compare = function (card1, target, card2) {
-						game.broadcast(function (player, target, card1, card2) {
-							player.$compare(card1, target, card2);
-						}, this, target, card1, card2);
-						game.addVideo('compare', this, [get.cardInfo(card1), target.dataset.position, get.cardInfo(card2)]);
-						var player = this;
-						target.$throwordered2(card2.copy(false));
-						player.$throwordered2(card1.copy(false));
-					};
-					Mixin.redirect(
+						},
+						/for\(var i=0;i<cards\.length;i\+\+\){\s*player\.\$throw\(cards\[i\]\);[\s\S]*},cards\);\s*}/,
+						(player, cards) => player.$throw(cards)
+					);
+					Mixin.replace(
 						'lib.element.content.gain',
 						/\s*var\s*sort\s*;[\s\S]*=\s*document\s*\.\s*createDocumentFragment\s*\(\s*\)\s*;/,
 						player => {
@@ -6177,8 +4368,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						},
 						/\s*game\s*\.\s*delayx\s*\(\s*\)\s*;(?=\s*if\s*\(\s*event\s*\.\s*updatePile\s*\)\s*game\s*\.\s*updateRoundNumber\s*\(\s*\)\s*;)/
 					);
-					const NonamePlayer = lib.element.Player;
-					if (NonamePlayer) lib.element.Player = class extends NonamePlayer {
+					lib.element.Player = class extends lib.element.Player {
 						buildNode() {
 							super.buildNode();
 							this.node.avatar.className = 'primary-avatar';
@@ -6191,9 +4381,11 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							const chainImg = new Image();
 							chainImg.onerror = () => {
 								const chainBack = ui.create.div('.chain-back', this.node.chain);
+
 								for (let chainLink = 0; chainLink < 40; chainLink++) {
 									ui.create.div('.cardbg', chainBack).style.transform = `translateX(${chainLink * 5 - 5}px)`;
 								}
+
 								delete chainImg.onerror;
 							};
 							chainImg.src = `${decadeUIPath}assets/image/tie_suo.png`;
@@ -6203,156 +4395,161 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							realIdentity.player = this;
 							Object.defineProperty(realIdentity, 'innerHTML', {
 								configurable: true,
-								get: function () {
+								get() {
 									return this.innerText;
 								},
-								set: function (value) {
+								set(innerHTML) {
 									if (get.mode() == 'guozhan' || _status.mode == 'jiange' || _status.mode == 'siguo') {
 										this.style.display = 'none';
-										this.innerText = value;
+										this.innerText = innerHTML;
 										this.parentNode.classList.add('guozhan-mode');
 										return;
 									}
+
 									let filename;
 									let checked;
 									const identity = this.parentNode.dataset.color;
 									const gameMode = get.mode();
 									let isExt = false;
-									if (lib.decade_extIdentity && (lib.decade_extIdentity[this.player.identity] || lib.decade_extIdentity[value]) && value != '猜') {
-										if (lib.decade_extIdentity[value]) {
-											filename = lib.decade_extIdentity[value];
-										} else {
-											filename = lib.decade_extIdentity[this.player.identity];
-										}
+
+									if (lib.decade_extIdentity && (lib.decade_extIdentity[this.player.identity] || lib.decade_extIdentity[innerHTML]) && innerHTML != '猜') {
+										if (lib.decade_extIdentity[innerHTML]) filename = lib.decade_extIdentity[innerHTML];
+										else filename = lib.decade_extIdentity[this.player.identity];
+
 										isExt = true;
-									} else {
-										switch (value) {
-											case '先':
-												filename = 'xianshou';
-												break;
-											case '后':
-												filename = 'houshou';
-												break;
-											case '猜':
-												filename = 'cai';
-												if (_status.mode == 'purple' && identity == 'cai') {
-													filename += '_blue';
-													checked = true;
-												}
-												break;
-											case '友':
-												filename = 'friend';
-												break;
-											case '敌':
-												filename = 'enemy';
-												break;
-											case '反':
-												filename = 'fan';
-												if (get.mode() == 'doudizhu') {
-													filename = 'nongmin';
-													checked = true;
-												}
-												break;
-											case '主':
-												filename = 'zhu';
-												if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
-													filename += '_blue';
-													this.player.classList.add('opposite-camp');
-													checked = true;
-												} else if (get.mode() == 'doudizhu') {
-													filename = 'dizhu';
-													checked = true;
-												}
-												break;
-											case '忠':
-												filename = 'zhong';
-												if (gameMode == 'identity' && _status.mode == 'purple') {
-													filename = 'qianfeng';
-												} else if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
-													filename += '_blue';
-													this.player.classList.add('opposite-camp');
-													checked = true;
-												}
-												break;
-											case '内':
-												if (_status.mode == 'purple') {
-													filename = identity == 'rNei' ? 'xizuo' : 'xizuo_blue';
-													checked = true;
-												} else {
-													filename = 'nei';
-												}
-												break;
-											case '野':
-												filename = 'ye';
-												break;
-											case '首':
-												filename = 'zeishou';
-												break;
-											case '帅':
-												filename = 'zhushuai';
-												break;
-											case '将':
-												filename = 'dajiang';
-												if (_status.mode == 'three' || get.translation(this.player.side + 'Color') == 'wei') {
-													filename = 'zhushuai_blue';
-													checked = true;
-												}
-												break;
-											case '兵':
-											case '卒':
-												filename = this.player.side === false ? 'qianfeng_blue' : 'qianfeng';
+									} else switch (innerHTML) {
+										case '先':
+											filename = 'xianshou';
+											break;
+										case '后':
+											filename = 'houshou';
+											break;
+										case '猜':
+											filename = 'cai';
+
+											if (_status.mode == 'purple' && identity == 'cai') {
+												filename += '_blue';
 												checked = true;
-												break;
-											case '师':
-												filename = 'junshi';
-												break;
-											case '盟':
-												filename = 'mengjun';
-												break;
-											case '神':
-												filename = 'boss';
-												break;
-											case '从':
-												filename = 'suicong';
-												break;
-											default:
-												this.innerText = value;
-												this.style.visibility = '';
-												this.parentNode.style.backgroundImage = '';
-												return;
-										}
+											}
+
+											break;
+										case '友':
+											filename = 'friend';
+											break;
+										case '敌':
+											filename = 'enemy';
+											break;
+										case '反':
+											filename = 'fan';
+
+											if (get.mode() == 'doudizhu') {
+												filename = 'nongmin';
+												checked = true;
+											}
+
+											break;
+										case '主':
+											filename = 'zhu';
+
+											if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
+												filename += '_blue';
+												this.player.classList.add('opposite-camp');
+												checked = true;
+											} else if (get.mode() == 'doudizhu') {
+												filename = 'dizhu';
+												checked = true;
+											}
+
+											break;
+										case '忠':
+											filename = 'zhong';
+
+											if (gameMode == 'identity' && _status.mode == 'purple') filename = 'qianfeng';
+											else if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
+												filename += '_blue';
+												this.player.classList.add('opposite-camp');
+												checked = true;
+											}
+
+											break;
+										case '内':
+											if (_status.mode == 'purple') {
+												filename = identity == 'rNei' ? 'xizuo' : 'xizuo_blue';
+												checked = true;
+											} else filename = 'nei';
+
+											break;
+										case '野':
+											filename = 'ye';
+											break;
+										case '首':
+											filename = 'zeishou';
+											break;
+										case '帅':
+											filename = 'zhushuai';
+											break;
+										case '将':
+											filename = 'dajiang';
+											if (_status.mode == 'three' || get.translation(this.player.side + 'Color') == 'wei') {
+												filename = 'zhushuai_blue';
+												checked = true;
+											}
+											break;
+										case '兵':
+										case '卒':
+											filename = this.player.side === false ? 'qianfeng_blue' : 'qianfeng';
+											checked = true;
+											break;
+										case '师':
+											filename = 'junshi';
+											break;
+										case '盟':
+											filename = 'mengjun';
+											break;
+										case '神':
+											filename = 'boss';
+											break;
+										case '从':
+											filename = 'suicong';
+											break;
+										default:
+											this.innerText = innerHTML;
+											this.style.visibility = '';
+											this.parentNode.style.backgroundImage = '';
+											return;
 									}
+
 									if (!checked && this.parentNode.dataset.color && !isExt) {
 										if (this.parentNode.dataset.color[0] == 'b') {
 											filename += '_blue';
 											this.player.classList.add('opposite-camp');
 										}
 									}
-									this.innerText = value;
+
+									this.innerText = innerHTML;
+
 									if (decadeUI.config.campIdentityImageMode) {
 										this.style.visibility = 'hidden';
 										const image = new Image();
 										image.onerror = () => this.style.visibility = '';
-										if (isExt) {
-											image.src = filename;
-										} else {
-											image.src = `${decadeUIPath}image/decoration/identity_${filename}.png`;
-										}
+
+										if (isExt) image.src = filename;
+										else image.src = `${decadeUIPath}image/decoration/identity_${filename}.png`;
+
 										this.parentNode.style.backgroundImage = `url("${image.src}")`;
-									} else {
-										this.style.visibility = '';
-									}
+									} else this.style.visibility = '';
 								}
 							});
 							Object.defineProperty(this.node.count, 'innerHTML', {
 								configurable: true,
-								get: function () {
+								get() {
 									return this.textContent;
 								},
-								set: function (value) {
-									if (this.textContent == value) return;
-									this.textContent = value;
-									this.dataset.text = value;
+								set(innerHTML) {
+									if (this.textContent == innerHTML) return;
+
+									this.textContent = innerHTML;
+									this.dataset.text = innerHTML;
 								}
 							});
 							const campWrap = ui.create.div('.camp-wrap');
@@ -6377,34 +4574,41 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							this.node.gainSkill.player = this;
 							this.node.gainSkill.gain = function (skill) {
 								if (!this.skills) this.skills = [];
+
 								if (this.skills.includes(skill) || !lib.translate[skill]) return;
+
 								const info = lib.skill[skill];
+
 								if (!info || info.charlotte || info.sub || (info.mark && !info.limited) || (info.nopop || info.popup === false)) return;
+
 								if (info.onremove && game.me != this.player.storage[skill]) return;
+
 								this.skills.push(skill);
 								this.innerHTML = this.skills.reduce((html, senderSkill) => `${html}[${lib.translate[senderSkill]}]`, '');
 							};
 							this.node.gainSkill.lose = function (skill) {
 								const index = this.skills.indexOf(skill);
+
 								if (index == -1) return;
+
 								this.skills.splice(index, 1);
 								this.innerHTML = this.skills.reduce((html, senderSkill) => `${html}[${get.translation(senderSkill)}]`, '');
 							};
 							Object.defineProperty(this, 'group', {
 								configurable: true,
-								get: function () {
+								get() {
 									return this._group;
 								},
-								set: function (value) {
-									this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || (this._group = value);
-									if (!value) return;
+								set(group) {
+									this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || (this._group = group);
+									if (!group) return;
 									if (!decadeUI.config.campIdentityImageMode) {
-										this.node.campWrap.node.campName.innerHTML = value ? get.translation(value)[0] : '';
+										this.node.campWrap.node.campName.innerHTML = group ? get.translation(group)[0] : '';
 										return;
 									}
 									const image = new Image();
-									const url = lib.decade_extGroupImage && lib.decade_extGroupImage[value] || `${decadeUIPath}image/decoration/name_${value}.png`;
-									this._finalGroup = value;
+									const url = lib.decade_extGroupImage && lib.decade_extGroupImage[group] || `${decadeUIPath}image/decoration/name_${group}.png`;
+									this._finalGroup = group;
 									image.onerror = () => this.node.campWrap.node.campName.innerHTML = this._finalGroup ? get.translation(this._finalGroup)[0] : '';
 									this.node.campWrap.node.campName.innerHTML = '';
 									this.node.campWrap.node.campName.style.backgroundImage = `url("${url}")`;
@@ -6415,343 +4619,1234 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						buildExtra() {
 							void 0;
 						}
-					};
-					else Mixin.redirect(
-						'ui.create.player',
-						/var\s*chainlength\s*=\s*game\s*\.\s*layout\s*==\s*'default'\s*\?\s*64\s*:\s*40\s*;[\s\S]*?}/,
-						node => {
-							node.node.avatar.className = 'primary-avatar';
-							node.node.avatar2.className = 'deputy-avatar';
-							node.node.turnedover.className = 'turned-over';
-							node.node.turnedover.textContent = '';
-							node.node.count.show().className = 'card-count';
-							node.node.marks.className = 'dui-marks';
-							node.node.chain.textContent = '';
-							const chainImg = new Image();
-							chainImg.onerror = () => {
-								const chainBack = ui.create.div('.chain-back', node.node.chain);
-								for (let chainLink = 0; chainLink < 40; chainLink++) {
-									ui.create.div('.cardbg', chainBack).style.transform = `translateX(${chainLink * 5 - 5}px)`;
-								}
-								delete chainImg.onerror;
-							};
-							chainImg.src = `${decadeUIPath}assets/image/tie_suo.png`;
-							node.$cardCount = node.node.count;
-							node.$dynamicWrap = ui.create.div('.dynamic-wrap');
-							const realIdentity = ui.create.div(node.node.identity);
-							realIdentity.player = node;
-							Object.defineProperty(realIdentity, 'innerHTML', {
-								configurable: true,
-								get: function () {
-									return this.innerText;
-								},
-								set: function (value) {
-									if (get.mode() == 'guozhan' || _status.mode == 'jiange' || _status.mode == 'siguo') {
-										this.style.display = 'none';
-										this.innerText = value;
-										this.parentNode.classList.add('guozhan-mode');
+						$syncExpand() {
+							super.$syncExpand(...arguments);
+							const back = ui.equipSolts.back;
+
+							while (back.firstChild) {
+								back.removeChild(back.lastChild);
+							}
+
+							const numberOfSlots = 5 + Object.values(this.expandedSlots).reduce((numberOfExpandedSlots, numberOfExpandedSubtypeSlots) => numberOfExpandedSlots + numberOfExpandedSubtypeSlots, 0);
+
+							for (let repetition = 0; repetition < numberOfSlots; repetition++) {
+								back.appendChild(document.createElement('div'));
+							}
+						}
+						setSeatNum() {
+							super.setSeatNum(...arguments);
+							this.seat = this.getSeatNum();
+							this.node.seat.innerHTML = get.cnNumber(this.seat, true);
+						}
+						$init(character, character2) {
+							super.$init(...arguments);
+							this.doubleAvatar = (character2 && lib.character[character2]) != undefined;
+							let currentDynamic = decadeUI.CUR_DYNAMIC;
+							let maximumDynamic = decadeUI.MAX_DYNAMIC;
+
+							if (typeof currentDynamic != 'number') decadeUI.CUR_DYNAMIC = currentDynamic = 0;
+
+							if (typeof maximumDynamic != 'number') {
+								maximumDynamic = decadeUI.isMobile() ? 2 : 10;
+
+								if (window.OffscreenCanvas) maximumDynamic += 8;
+
+								decadeUI.MAX_DYNAMIC = maximumDynamic;
+							}
+
+							if (this.dynamic) this.stopDynamic();
+
+							const showDynamic = (this.dynamic || currentDynamic < maximumDynamic) && duicfg.dynamicSkin;
+
+							if (showDynamic && _status.mode != null) {
+								const dynamicSkins = decadeUI.dynamicSkin;
+								const avatars = this.doubleAvatar ? [character, character2] : [character];
+								let increased;
+								avatars.forEach(avatar => {
+									const skins = dynamicSkins[avatar];
+
+									if (!skins) return;
+
+									const keys = Object.keys(skins);
+
+									if (keys.length == 0) {
+										console.error(`player.init: ${avatar} 没有设置动皮参数`);
 										return;
 									}
-									let filename;
-									let checked;
-									const identity = this.parentNode.dataset.color;
-									const gameMode = get.mode();
-									let isExt = false;
-									if (lib.decade_extIdentity && (lib.decade_extIdentity[this.player.identity] || lib.decade_extIdentity[value]) && value != '猜') {
-										if (lib.decade_extIdentity[value]) {
-											filename = lib.decade_extIdentity[value];
-										} else {
-											filename = lib.decade_extIdentity[this.player.identity];
+
+									const skin = skins[Object.keys(skins)[0]];
+
+									if (typeof skin.speed != 'number') skin.speed = 1;
+
+									this.playDynamic({
+										/**
+										 * 骨骼文件名，一般是assets/dynamic 下的动皮文件，也可以使用.. 来寻找其他文件目录
+										 * @type {string}
+										 */
+										name: skin.name,
+										/**
+										 * 播放动作 不填为默认
+										 * @type {string}
+										 */
+										action: skin.action,
+										/**
+										 * 是否循环播放
+										 * @type {boolean}
+										 */
+										loop: true,
+										/**
+										 * 循环次数，只有loop为true时生效
+										 * @type {number}
+										 */
+										loopCount: -1,
+										/**
+										 * 播放速度
+										 * @type {number}
+										 */
+										speed: skin.speed,
+										/**
+										 * 水平镜像
+										 * @type {boolean}
+										 */
+										filpX: null,
+										/**
+										 * 垂直翻转
+										 * @type {boolean}
+										 */
+										filpY: null,
+										/**
+										 * 0~1
+										 * 
+										 * 不透明度
+										 * @type {number}
+										 */
+										opacity: null,
+										/**
+										 * 相对于父节点坐标x，不填为居中
+										 * 
+										 * (1) x: 10, 相当于 left: 10px；
+										 * 
+										 * (2) x: [10, 0.5], 相当于 left: calc(50% + 10px)；
+										 * @type {number | [number, number]}
+										 */
+										x: skin.x,
+										/**
+										 * 相对于父节点坐标y，不填为居中
+										 * 
+										 * (1) y: 10，相当于 top: 10px；
+										 * 
+										 * (2) y: [10, 0.5]，相当于 top: calc(50% + 10px)；
+										 * @type {number | [number, number]}
+										 */
+										y: skin.y,
+										/**
+										 * 缩放
+										 * @type {number}
+										 */
+										scale: skin.scale,
+										/**
+										 * 角度
+										 * @type {number}
+										 */
+										angle: skin.angle,
+										/**
+										 * 隐藏不需要的部件，想知道具体部件名称请使用SpineAltasSplit工具查看
+										 */
+										hideSlots: skin.hideSlots,
+										/**
+										 * 剪掉超出头的部件，仅针对露头动皮，其他勿用
+										 */
+										clipSlots: skin.clipSlots,
+									}, i == 1);
+									this.$dynamicWrap.style.backgroundImage = `url("${decadeUIPath}assets/dynamic/${skin.background}")`;
+
+									if (increased) return;
+
+									increased = true;
+									decadeUI.CUR_DYNAMIC++;
+								});
+							}
+
+							let refreshPrefix;
+
+							if (character && duicfg.showJieMark) {
+								if (lib.characterPack.refresh) refreshPrefix = lib.characterPack.refresh[character];
+
+								if (!refreshPrefix) refreshPrefix = character.substr(0, 3);
+
+								if (refreshPrefix) {
+									refreshPrefix = lib.translate[character] && lib.translate[character][0];
+
+									if (refreshPrefix == '界') {
+										if (!this.$jieMark) this.$jieMark = dui.element.create('jie-mark', this);
+										else this.appendChild(this.$jieMark);
+									}
+								}
+							}
+
+							if (refreshPrefix == '界') {
+								let text = this.node.name.innerText;
+
+								if (text[1] == '\n') text = text.substr(2);
+								else text = text.substr(1);
+
+								this.node.name.innerText = text;
+							}
+
+							return this;
+						}
+						uninit() {
+							if (this.$jieMark) this.$jieMark.remove();
+
+							this.stopDynamic();
+							this.doubleAvatar = false;
+							delete this.node.campWrap.dataset.camp;
+							const campName = this.node.campWrap.node.campName;
+
+							while (campName.firstChild) {
+								campName.removeChild(campName.lastChild);
+							}
+
+							campName.style.removeProperty('background-image');
+							return super.uninit(...arguments);
+						}
+						getState() {
+							const state = super.getState(...arguments);
+							state.seat = this.seat;
+							return state;
+						}
+						$update() {
+							const hpMax = this.maxHp;
+
+							if (this.hp >= hpMax) this.hp = hpMax;
+
+							const count = this.countCards('h');
+							const hp = this.hp;
+
+							if (!_status.video) {
+								if (this.hujia) this.markSkill('ghujia');
+								else this.unmarkSkill('ghujia');
+							}
+
+							const hpNode = this.node.hp;
+
+							if (!this.storage.nohp) {
+								if (hpMax > 5) {
+									hpNode.innerHTML = `${isNaN(hp) ? '×' : hp == Infinity ? '∞' : hp}<br>/<br>${(isNaN(hpMax) ? '×' : hpMax == Infinity ? '∞' : hpMax)}<div></div>`;
+
+									if (hp == 0) hpNode.lastChild.classList.add('lost');
+
+									hpNode.classList.add('textstyle');
+								} else {
+									hpNode.innerHTML = '';
+									hpNode.classList.remove('textstyle');
+
+									while (hpMax > hpNode.childNodes.length) {
+										ui.create.div(hpNode);
+									}
+
+									while (hpNode.childNodes.length && hpMax < hpNode.childNodes.length) {
+										hpNode.lastChild.remove();
+									}
+
+									for (var i = 0; i < hpMax; i++) {
+										if (i < hp) hpNode.childNodes[i].classList.remove('lost');
+										else hpNode.childNodes[i].classList.add('lost');
+									}
+								}
+
+								if (hpNode.classList.contains('room')) hpNode.dataset.condition = 'high';
+								else if (hp == 0) hpNode.dataset.condition = '';
+								else if (hp > Math.round(hpMax / 2) || hp === hpMax) hpNode.dataset.condition = 'high';
+								else if (hp > Math.floor(hpMax / 3)) hpNode.dataset.condition = 'mid';
+								else hpNode.dataset.condition = 'low';
+							}
+
+							this.node.count.innerHTML = count;
+
+							if (count >= 10) this.node.count.dataset.condition = 'low';
+							else if (count > 5) this.node.count.dataset.condition = 'higher';
+							else if (count > 2) this.node.count.dataset.condition = 'high';
+							else if (count > 0) this.node.count.dataset.condition = 'mid';
+							else this.node.count.dataset.condition = 'none';
+
+							this.dataset.maxHp = hpMax;
+
+							if (this.updates) for (var i = 0; i < this.updates.length; i++) {
+								this.updates[i](this);
+							}
+
+							if (!_status.video) game.addVideo('update', this, [this.countCards('h'), this.hp, this.maxHp, this.hujia]);
+
+							this.updateMarks();
+							return this;
+						}
+						line(target, config) {
+							if (get.itemtype(target) == 'players') super.line(...arguments);
+							else if (get.itemtype(target) == 'player') {
+								if (target == this)
+									return;
+
+								var player = this;
+								game.broadcast(function (player, target, config) {
+									player.line(target, config);
+								}, player, target, config);
+								game.addVideo('line', player, [target.dataset.position, config]);
+
+								player.checkBoundsCache(true);
+								target.checkBoundsCache(true);
+								var x1, y1;
+								var x2, y2;
+								var hand = dui.boundsCaches.hand;
+								if (player == game.me) {
+									hand.check();
+									x1 = hand.x + hand.width / 2;
+									y1 = hand.y;
+								} else {
+									x1 = player.cacheLeft + player.cacheWidth / 2;
+									y1 = player.cacheTop + player.cacheHeight / 2;
+								}
+
+								if (target == game.me) {
+									hand.check();
+									x2 = hand.x + hand.width / 2;
+									y2 = hand.y;
+								} else {
+									x2 = target.cacheLeft + target.cacheWidth / 2;
+									y2 = target.cacheTop + target.cacheHeight / 2;
+								}
+
+								game.linexy([x1, y1, x2, y2], config, true);
+							}
+						}
+						setIdentity(identity) {
+							if (!identity) identity = this.identity;
+
+							if (get.mode() == 'guozhan') {
+								this.node.identity.dataset.color = identity;
+								if (identity == 'ye' && get.is.jun(this)) this.identity = identity = lib.character[this.name1][1];
+								this.group = identity;
+								this.node.identity.firstChild.innerHTML = get.translation(identity);
+								return this;
+							}
+
+							return super.setIdentity(identity);
+						}
+						chooseToRespond() {
+							const chooseToRespond = super.chooseToRespond(...arguments);
+							if (/^请打出.*张/.test(chooseToRespond.prompt)) delete chooseToRespond.prompt;
+							return chooseToRespond;
+						}
+						useCard() {
+							const useCard = super.useCard(...arguments);
+							useCard.pushHandler((event, option) => {
+								if (event.step == 0 && option.state == 'end') {
+									const player = event.player;
+									event.targets.forEach(current => {
+										if (current != player) current.classList.add('target');
+									});
+								} else if (event.finished) event.targets.forEach(current => {
+									const classList = current.classList;
+									if (classList.contains('target')) classList.remove('target');
+								});
+							});
+							return useCard;
+						}
+						directgain(cards) {
+							super.directgain(...arguments);
+
+							if (this == game.me) {
+								if (cards && cards.length) dui.layoutHandDraws(cards.reverse());
+
+								dui.queueNextFrameTick(dui.layoutHand, dui);
+							}
+
+							return this;
+						}
+						lose() {
+							const event = get.event(), lose = super.lose(...arguments);
+
+							if (event.name == 'useCard') {
+								lose.animate = true;
+								lose.blameEvent = event;
+							}
+
+							lose.pushHandler((event, option) => {
+								const step = event.step;
+
+								if (step == 0) {
+									const state = option.state;
+
+									if (state == 'begin') {
+										const playerCards = event.player.getCards('hejsx');
+										const cards = event.cards.filter(card => playerCards.includes(card));
+										game.broadcastAll(cards => cards.duiMod = true, cards);
+										cards.filter(card => playerCards.includes(card)).forEach(card => {
+											const parentNode = card.parentNode;
+
+											if (!parentNode) return;
+
+											const classList = parentNode.classList;
+
+											if (classList.contains('equips')) card.throwWith = 'e';
+											else if (classList.contains('judges')) card.throwWith = 'j';
+											else if (classList.contains('expansions')) card.throwWith = 'x';
+											else if (!classList.contains('handcards')) return;
+
+											if (card.classList.contains('glows')) card.throwWith = 's';
+											else card.throwWith = 'h';
+										});
+									}
+									else if (state == 'end') {
+										const parent = event.getParent();
+
+										if (!event.blameEvent && (parent.name != 'discard' || event.type != 'discard') && (parent.name != 'loseToDiscardpile' || event.type != 'loseToDiscardpile')) event.animate = false;
+										else if (typeof event.animate != 'boolean') {
+											const parentAnimate = parent.animate;
+
+											if (typeof parentAnimate == 'boolean') event.animate = parentAnimate;
 										}
-										isExt = true;
+									}
+								} else if (step == 1 && option.state == 'end') {
+									event.cards.forEach(card => {
+										const style = card.style, transform = style.transform;
+
+										if (transform.endsWith(' scale(0.2)')) style.transform = transform.slice(0, -11);
+									});
+
+									if (event.player == game.me) dui.queueNextFrameTick(dui.layoutHand, dui);
+								}
+							});
+							return lose;
+						}
+						changeHp() {
+							const changeHp = super.changeHp(...arguments);
+							changeHp.pushHandler((event, option) => {
+								if (event.finished) dui.delay(68);
+							});
+							return changeHp;
+						}
+						equip() {
+							const equip = super.equip(...arguments);
+							equip.pushHandler((event, option) => {
+								if (event.step == 0 && option.state == 'end') {
+									const lose = event.next[0];
+									if (!lose || lose.name != 'lose') return;
+									lose.animate = true;
+									lose.blameEvent = event;
+								}
+							});
+							return equip;
+						}
+						prompt() {
+							super.prompt(...arguments);
+							const prompt = this.node.prompt;
+							prompt.dataset.text = prompt.innerText;
+							prompt.style.animation = 'open-fade-in 0.6s';
+						}
+						addSkill() {
+							const skill = super.addSkill(...arguments);
+
+							if (!Array.isArray(skill)) {
+								const character1 = lib.character[this.name];
+								const character2 = lib.character[this.name2];
+
+								if ((!character1 || !character1[3].includes(skill)) && (!character2 || !character2[3].includes(skill))) this.node.gainSkill.gain(skill);
+							}
+
+							return skill;
+						}
+						removeSkill() {
+							const skill = super.removeSkill(...arguments);
+
+							if (!Array.isArray(skill)) {
+								const gainSkill = this.node.gainSkill;
+								const skills = gainSkill.skills;
+
+								if (skills && skills.includes(skill)) gainSkill.lose(skill);
+							}
+
+							return skill;
+						}
+						$draw(num, init, config) {
+							if (game.chess)
+								return super.$draw(...arguments);
+
+							if (init !== false && init !== 'nobroadcast') {
+								game.broadcast(function (player, num, init, config) {
+									player.$draw(num, init, config);
+								}, this, num, init, config);
+							}
+
+							var cards;
+							var isDrawCard;
+							if (get.itemtype(num) == 'cards') {
+								cards = num.concat();
+								isDrawCard = true;
+							} else if (get.itemtype(num) == 'card') {
+								cards = [num];
+								isDrawCard = true;
+							} else if (typeof num == 'number') {
+								cards = new Array(num);
+							} else {
+								cards = new Array(1);
+							}
+
+							if (init !== false) {
+								if (isDrawCard) {
+									game.addVideo('drawCard', this, get.cardsInfo(cards));
+								} else {
+									game.addVideo('draw', this, num);
+								}
+							}
+
+							if (game.me == this)
+								return;
+
+							var fragment = document.createDocumentFragment();
+							var card;
+							for (var i = 0; i < cards.length; i++) {
+								card = cards[i];
+								if (card == null)
+									card = dui.element.create('card thrown drawingcard');
+								else
+									card = card.copy('thrown', 'drawingcard', false);
+
+								card.fixed = true;
+								cards[i] = card;
+								fragment.appendChild(card);
+							}
+
+							var player = this;
+							dui.layoutDrawCards(cards, player, true);
+							ui.arena.appendChild(fragment);
+							dui.queueNextFrameTick(function () {
+								dui.layoutDrawCards(cards, player);
+								dui.delayRemoveCards(cards, 460, 220);
+							});
+						}
+						$compare(card1, target, card2) {
+							game.broadcast(function (player, target, card1, card2) {
+								player.$compare(card1, target, card2);
+							}, this, target, card1, card2);
+							game.addVideo('compare', this, [get.cardInfo(card1), target.dataset.position, get.cardInfo(card2)]);
+							var player = this;
+							target.$throwordered2(card2.copy(false));
+							player.$throwordered2(card1.copy(false));
+						}
+						$throw(cards, time, record, nosource) {
+							var itemtype;
+							var duiMod = (cards.duiMod && game.me == this && !nosource);
+							if (typeof cards == 'number') {
+								itemtype = 'number';
+								cards = new Array(cards);
+							} else {
+								itemtype = get.itemtype(cards);
+								if (itemtype == 'cards') {
+									cards = cards.concat();
+								} else if (itemtype == 'card') {
+									cards = [cards];
+								} else {
+									return;
+								}
+							}
+
+							var card;
+							var clone;
+							var player = this;
+							var hand = dui.boundsCaches.hand;
+							hand.check();
+
+							for (var i = 0; i < cards.length; i++) {
+								card = cards[i];
+								if (card) {
+									clone = card.copy('thrown');
+									if (duiMod && (card.throwWith == 'h' || card.throwWith == 's')) {
+										clone.tx = Math.round(hand.x + card.tx);
+										clone.ty = Math.round(hand.y + 30 + card.ty);
+										clone.scaled = true;
+										clone.throwordered = true;
+										clone.style.transform = 'translate(' + clone.tx + 'px,' + clone.ty + 'px) scale(' + hand.cardScale + ')';
+									}
+									card = clone;
+								} else {
+									card = dui.element.create('card infohidden infoflip');
+									card.moveTo = lib.element.Card.prototype.moveTo;
+									card.moveDelete = lib.element.Card.prototype.moveDelete;
+								}
+
+								cards[i] = card;
+							}
+
+							if (record !== false) {
+								if (record !== 'nobroadcast') {
+									game.broadcast(function (player, cards, time, record, nosource) {
+										player.$throw(cards, time, record, nosource);
+									}, this, cards, 0, record, nosource);
+								}
+
+								game.addVideo('throw', this, [get.cardsInfo(cards), 0, nosource]);
+							}
+
+							if (duiMod && cards.length > 2) {
+								cards.sort(function (a, b) {
+									if (a.tx == undefined && b.tx == undefined)
+										return 0;
+
+									if (a.tx == undefined)
+										return duicfg.rightLayout ? -1 : 1;
+
+									if (b.tx == undefined)
+										return duicfg.rightLayout ? 1 : -1;
+
+									return b.tx - a.tx;
+								});
+							}
+
+							for (var i = 0; i < cards.length; i++)
+								player.$throwordered2(cards[i], nosource);
+
+							if (game.chess)
+								this.chessFocus();
+
+							return cards[cards.length - 1];
+						}
+						$throwordered2(card, nosource) {
+							if (_status.connectMode)
+								ui.todiscard = [];
+
+							if (card.throwordered == undefined) {
+								var x, y;
+								var bounds = dui.boundsCaches.arena;
+								if (!bounds.updated)
+									bounds.update();
+
+								this.checkBoundsCache();
+								if (nosource) {
+									x = ((bounds.width - bounds.cardWidth) / 2 - bounds.width * 0.08);
+									y = ((bounds.height - bounds.cardHeight) / 2);
+								} else {
+									x = ((this.cacheWidth - bounds.cardWidth) / 2 + this.cacheLeft);
+									y = ((this.cacheHeight - bounds.cardHeight) / 2 + this.cacheTop);
+								}
+
+								x = Math.round(x);
+								y = Math.round(y);
+
+								card.tx = x;
+								card.ty = y;
+								card.scaled = true;
+								card.classList.add('thrown');
+								card.style.transform = 'translate(' + x + 'px, ' + y + 'px)' + 'scale(' + bounds.cardScale + ')';
+							} else {
+								card.throwordered = undefined;
+							}
+
+							if (card.fixed)
+								return ui.arena.appendChild(card);
+
+							var before;
+							for (var i = 0; i < ui.thrown; i++) {
+								if (ui.thrown[i].parentNode == ui.arena) {
+									before = ui.thrown[i];
+									break;
+								}
+							}
+
+							var tagNode = card.querySelector('.used-info');
+							if (tagNode == null)
+								tagNode = card.appendChild(dui.element.create('used-info'));
+
+							card.$usedtag = tagNode;
+							ui.thrown.unshift(card);
+							if (before)
+								ui.arena.insertBefore(before, card);
+							else
+								ui.arena.appendChild(card);
+
+							dui.tryAddPlayerCardUseTag(card, this, _status.event);
+							dui.queueNextFrameTick(dui.layoutDiscard, dui);
+							return card;
+						}
+						$give(cards, target, log, record) {
+							var itemtype;
+							var duiMod = (cards.duiMod && game.me == target);
+							if (typeof cards == 'number') {
+								itemtype = 'number';
+								cards = new Array(cards);
+							} else {
+								itemtype = get.itemtype(cards);
+								if (itemtype == 'cards') {
+									cards = cards.concat();
+								} else if (itemtype == 'card') {
+									cards = [cards];
+								} else {
+									return;
+								}
+							}
+
+							if (record !== false) {
+								var cards2 = cards;
+								if (itemtype == 'number') {
+									cards2 = cards.length;
+									game.addVideo('give', this, [cards2, target.dataset.position]);
+								} else {
+									game.addVideo('giveCard', this, [get.cardsInfo(cards2), target.dataset.position]);
+								}
+
+								game.broadcast(function (source, cards2, target, record) {
+									source.$give(cards2, target, false, record);
+								}, this, cards2, target, record);
+							}
+
+							if (log != false) {
+								if (itemtype == 'number')
+									game.log(target, '从', this, '获得了' + get.cnNumber(cards.length) + '张牌');
+								else
+									game.log(target, '从', this, '获得了', cards);
+							}
+
+							if (this.$givemod) {
+								this.$givemod(cards, target);
+								return;
+							}
+
+							if (duiMod)
+								return;
+
+							var card;
+							var hand = dui.boundsCaches.hand;
+							hand.check();
+
+							var draws = [];
+							var player = this;
+							var fragment = document.createDocumentFragment();
+							for (var i = 0; i < cards.length; i++) {
+								card = cards[i];
+								if (card) {
+									var cp = card.copy('card', 'thrown', 'gainingcard', false);
+									var hs = player == game.me;
+									if (hs) {
+										if (card.throwWith)
+											hs = card.throwWith == 'h' || card.throwWith == 's';
+										else
+											hs = card.parentNode == player.node.handcards1;
+									}
+
+									if (hs) {
+										cp.tx = Math.round(hand.x + card.tx);
+										cp.ty = Math.round(hand.y + 30 + card.ty);
+										cp.scaled = true;
+										cp.style.transform = 'translate(' + cp.tx + 'px,' + cp.ty + 'px) scale(' + hand.cardScale + ')';
 									} else {
-										switch (value) {
-											case '先':
-												filename = 'xianshou';
-												break;
-											case '后':
-												filename = 'houshou';
-												break;
-											case '猜':
-												filename = 'cai';
-												if (_status.mode == 'purple' && identity == 'cai') {
-													filename += '_blue';
-													checked = true;
-												}
-												break;
-											case '友':
-												filename = 'friend';
-												break;
-											case '敌':
-												filename = 'enemy';
-												break;
-											case '反':
-												filename = 'fan';
-												if (get.mode() == 'doudizhu') {
-													filename = 'nongmin';
-													checked = true;
-												}
-												break;
-											case '主':
-												filename = 'zhu';
-												if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
-													filename += '_blue';
-													this.player.classList.add('opposite-camp');
-													checked = true;
-												} else if (get.mode() == 'doudizhu') {
-													filename = 'dizhu';
-													checked = true;
-												}
-												break;
-											case '忠':
-												filename = 'zhong';
-												if (gameMode == 'identity' && _status.mode == 'purple') {
-													filename = 'qianfeng';
-												} else if (get.mode() == 'versus' && get.translation(`${this.player.side}Color`) == 'wei') {
-													filename += '_blue';
-													this.player.classList.add('opposite-camp');
-													checked = true;
-												}
-												break;
-											case '内':
-												if (_status.mode == 'purple') {
-													filename = identity == 'rNei' ? 'xizuo' : 'xizuo_blue';
-													checked = true;
+										draws.push(cp);
+									}
+									card = cp;
+								} else {
+									card = dui.element.create('card thrown gainingcard');
+									draws.push(card);
+								}
+
+								cards[i] = card;
+								cards[i].fixed = true;
+								fragment.appendChild(cards[i]);
+							}
+
+							if (draws.length)
+								dui.layoutDrawCards(draws, player);
+
+							ui.arena.appendChild(fragment);
+							dui.queueNextFrameTick(function () {
+								dui.layoutDrawCards(cards, target);
+								dui.delayRemoveCards(cards, 460, 220);
+							});
+						}
+						$gain2(cards, log) {
+							var type = get.itemtype(cards);
+							if (type != 'cards') {
+								if (type != 'card')
+									return;
+
+								type = 'cards';
+								cards = [cards];
+							}
+
+							if (log === true)
+								game.log(this, '获得了', cards);
+
+							game.broadcast(function (player, cards) {
+								player.$gain2(cards);
+							}, this, cards);
+
+							var gains = [];
+							var draws = [];
+
+							var card;
+							var clone;
+							for (var i = 0; i < cards.length; i++) {
+								clone = cards[i].clone;
+								card = cards[i].copy('thrown', 'gainingcard');
+								card.fixed = true;
+								if (clone && clone.parentNode == ui.arena) {
+									card.scaled = true;
+									card.style.transform = clone.style.transform;
+									gains.push(card);
+								} else {
+									draws.push(card);
+								}
+							}
+
+							if (gains.length)
+								game.addVideo('gain2', this, get.cardsInfo(gains));
+
+							if (draws.length)
+								game.addVideo('drawCard', this, get.cardsInfo(draws));
+
+							if (cards.duiMod && this == game.me)
+								return;
+
+							cards = gains.concat(draws);
+							dui.layoutDrawCards(draws, this, true);
+
+							var player = this;
+							var fragment = document.createDocumentFragment();
+							for (var i = 0; i < cards.length; i++)
+								fragment.appendChild(cards[i]);
+
+							ui.arena.appendChild(fragment);
+							dui.queueNextFrameTick(function () {
+								dui.layoutDrawCards(cards, player);
+								dui.delayRemoveCards(cards, 460, 220);
+							});
+						}
+						$skill(name, type, color, avatar) {
+							if (!decadeUI.config.gameAnimationEffect || !decadeUI.animation.gl) return super.$skill(...arguments);
+							var _this = this;
+							if (typeof type != 'string') type = 'legend';
+
+							game.addVideo('skill', this, [name, type, color, avatar]);
+							game.broadcastAll(function (player, type, name, color, avatar) {
+								if (window.decadeUI == void 0) {
+									game.delay(2.5);
+									if (name) player.$fullscreenpop(name, color, avatar);
+									return;
+								}
+
+								decadeUI.delay(2500);
+								if (name) decadeUI.effect.skill(player, name, avatar);
+							}, _this, type, name, color, avatar);
+						}
+						$damagepop(num, nature, font, nobroadcast) {
+							if (typeof num == 'number' || typeof num == 'string') {
+								game.addVideo('damagepop', this, [num, nature, font]);
+								if (nobroadcast !== false) {
+									game.broadcast(function (player, num, nature, font) {
+										player.$damagepop(num, nature, font);
+									}, this, num, nature, font);
+								}
+
+								var node;
+								if (this.popupNodeCache && this.popupNodeCache.length) {
+									node = this.popupNodeCache.shift();
+								} else {
+									node = decadeUI.element.create('damage');
+								}
+
+								if (font) {
+									node.classList.add('normal-font');
+								} else {
+									node.classList.remove('normal-font');
+								}
+
+								if (typeof num == 'number') {
+									node.popupNumber = num;
+									if (num == Infinity) {
+										num = '+∞'
+									} else if (num == -Infinity) {
+										num = '-∞';
+									} else if (num > 0) {
+										num = '+' + num;
+									}
+
+								} else {
+									node.popupNumber = null;
+								}
+
+								node.innerHTML = num;
+								node.dataset.text = node.innerText;
+								node.nature = nature || 'soil';
+								this.damagepopups.push(node);
+							}
+
+							if (this.damagepopups.length && !this.damagepopLocked) {
+								var node = this.damagepopups.shift();
+								this.damagepopLocked = true;
+								if (this != node.parentNode) this.appendChild(node);
+
+								var player = this;
+								if (typeof node.popupNumber == 'number') {
+									var popupNum = node.popupNumber;
+									if (popupNum < 0) {
+										switch (node.nature) {
+											case 'thunder':
+												if (popupNum <= -2) {
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play6' }, { scale: 0.8, parent: player });
 												} else {
-													filename = 'nei';
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play5' }, { scale: 0.8, parent: player });
 												}
 												break;
-											case '野':
-												filename = 'ye';
-												break;
-											case '首':
-												filename = 'zeishou';
-												break;
-											case '帅':
-												filename = 'zhushuai';
-												break;
-											case '将':
-												filename = 'dajiang';
-												if (_status.mode == 'three' || get.translation(this.player.side + 'Color') == 'wei') {
-													filename = 'zhushuai_blue';
-													checked = true;
+											case 'fire':
+												if (popupNum <= -2) {
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play4' }, { scale: 0.8, parent: player });
+												} else {
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play3' }, { scale: 0.8, parent: player });
 												}
 												break;
-											case '兵':
-											case '卒':
-												filename = this.player.side === false ? 'qianfeng_blue' : 'qianfeng';
-												checked = true;
-												break;
-											case '师':
-												filename = 'junshi';
-												break;
-											case '盟':
-												filename = 'mengjun';
-												break;
-											case '神':
-												filename = 'boss';
-												break;
-											case '从':
-												filename = 'suicong';
+											case 'water':
 												break;
 											default:
-												this.innerText = value;
-												this.style.visibility = '';
-												this.parentNode.style.backgroundImage = '';
-												return;
+												if (popupNum <= -2) {
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play2' }, { scale: 0.8, parent: player });
+												} else {
+													decadeUI.animation.playSpine({ name: 'effect_shoujidonghua', action: 'play1' }, { scale: 0.8, parent: player });
+												}
+												break;
 										}
-									}
-									if (!checked && this.parentNode.dataset.color && !isExt) {
-										if (this.parentNode.dataset.color[0] == 'b') {
-											filename += '_blue';
-											this.player.classList.add('opposite-camp');
-										}
-									}
-									this.innerText = value;
-									if (decadeUI.config.campIdentityImageMode) {
-										this.style.visibility = 'hidden';
-										const image = new Image();
-										image.onerror = () => this.style.visibility = '';
-										if (isExt) {
-											image.src = filename;
-										} else {
-											image.src = `${decadeUIPath}image/decoration/identity_${filename}.png`;
-										}
-										this.parentNode.style.backgroundImage = `url("${image.src}")`;
 									} else {
-										this.style.visibility = '';
+										if (node.nature == 'wood') {
+											decadeUI.animation.playSpine('effect_zhiliao', { scale: 0.7, parent: player });
+										}
 									}
 								}
-							});
-							Object.defineProperty(node.node.count, 'innerHTML', {
-								configurable: true,
-								get: function () {
-									return this.textContent;
-								},
-								set: function (value) {
-									if (this.textContent == value) return;
-									this.textContent = value;
-									this.dataset.text = value;
-								}
-							});
-							const campWrap = ui.create.div('.camp-wrap');
-							const hpWrap = ui.create.div('.hp-wrap');
-							node.insertBefore(campWrap, node.node.name);
-							node.insertBefore(hpWrap, node.node.hp);
-							node.node.campWrap = campWrap;
-							node.node.hpWrap = hpWrap;
-							hpWrap.appendChild(node.node.hp);
-							campWrap.node = {
-								back: ui.create.div('.camp-back', campWrap),
-								border: ui.create.div('.camp-border', campWrap),
-								campName: ui.create.div('.camp-name', campWrap),
-								avatarName: node.node.name,
-								avatarDefaultName: ui.create.div('.avatar-name-default', campWrap)
+
+								node.style.animation = 'open-fade-in-out 1.2s';
+								setTimeout(function (player, node) {
+									if (!player.popupNodeCache) player.popupNodeCache = [];
+									node.style.animation = '';
+									player.popupNodeCache.push(node);
+								}, 1210, player, node);
+
+								setTimeout(function (player) {
+									player.damagepopLocked = false;
+									player.$damagepop();
+								}, 500, player);
+							}
+						}
+						$damage(source) {
+							if (get.itemtype(source) == 'player') {
+								game.addVideo('damage', this, source.dataset.position);
+							} else {
+								game.addVideo('damage', this);
+							}
+							game.broadcast(function (player, source) {
+								player.$damage(source);
+							}, this, source);
+
+							this.queueCssAnimation('player-hurt 0.3s');
+						}
+						$dieflip() {
+							if (!decadeUI.config.playerDieEffect) super.$dieflip(...arguments);
+						}
+						$phaseJudge(card) {
+							game.addVideo('phaseJudge', this, get.cardInfo(card));
+							this.$throw(card);
+							dui.delay(451);
+						}
+						$dieAfter() {
+							this.stopDynamic();
+
+							if (!decadeUI.config.playerDieEffect) {
+								if (super.$dieAfter) super.$dieAfter(...arguments);
+								return;
+							}
+
+							if (!this.node.dieidentity) this.node.dieidentity = ui.create.div('died-identity', this);
+							this.node.dieidentity.classList.add('died-identity');
+
+							var that = this;
+							var image = new Image();
+							var identity = decadeUI.getPlayerIdentity(this);
+							var url = decadeUIPath + 'image/decoration/dead_' + identity + '.png';
+							image.onerror = function () {
+								that.node.dieidentity.innerHTML = decadeUI.getPlayerIdentity(that, that.identity, true) + '<br>阵亡';
 							};
-							campWrap.appendChild(node.node.name);
-							campWrap.node.avatarName.className = 'avatar-name';
-							campWrap.node.avatarDefaultName.innerHTML = '主将';
-							node.node.mask = node.insertBefore(ui.create.div('.mask'), node.node.identity);
-							node.node.gainSkill = ui.create.div('.gain-skill', node);
-							node.node.gainSkill.player = node;
-							node.node.gainSkill.gain = function (skill) {
-								if (!this.skills) this.skills = [];
-								if (this.skills.includes(skill) || !lib.translate[skill]) return;
-								const info = lib.skill[skill];
-								if (!info || info.charlotte || info.sub || (info.mark && !info.limited) || (info.nopop || info.popup === false)) return;
-								if (info.onremove && game.me != this.player.storage[skill]) return;
-								this.skills.push(skill);
-								this.innerHTML = this.skills.reduce((html, senderSkill) => `${html}[${lib.translate[senderSkill]}]`, '');
-							};
-							node.node.gainSkill.lose = function (skill) {
-								const index = this.skills.indexOf(skill);
-								if (index == -1) return;
-								this.skills.splice(index, 1);
-								this.innerHTML = this.skills.reduce((html, senderSkill) => `${html}[${get.translation(senderSkill)}]`, '');
-							};
-							Object.defineProperty(node, 'group', {
-								configurable: true,
-								get: function () {
-									return this._group;
-								},
-								set: function (value) {
-									this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || (this._group = value);
-									if (!value) return;
-									if (!decadeUI.config.campIdentityImageMode) {
-										this.node.campWrap.node.campName.innerHTML = value ? get.translation(value)[0] : '';
+
+							that.node.dieidentity.innerHTML = '';
+							that.node.dieidentity.style.backgroundImage = 'url("' + url + '")';
+							image.src = url;
+							setTimeout(function () {
+								var rect = that.getBoundingClientRect();
+								decadeUI.animation.playSpine('effect_zhenwang', {
+									x: rect.left + rect.width / 2 - 7,
+									y: decadeUI.get.bodySize().height - rect.top - rect.height / 2 + 1,
+									scale: 0.8,
+								});
+							}, 250);
+						}
+						setModeState(info) {
+							if (info && info.seat) {
+								if (!this.node.seat) this.node.seat = ui.create.div('.seat', this);
+
+								this.node.seat.innerHTML = get.cnNumber(info.seat, true);
+							}
+
+							return super.setModeState ? super.setModeState(...arguments) : this.init(info.name, info.name2);
+						}
+						checkBoundsCache(forceUpdate) {
+							var update;
+							var refer = dui.boundsCaches.arena;
+							refer.check();
+
+							if (this.cacheReferW != refer.width ||
+								this.cacheReferH != refer.height ||
+								this.cachePosition != this.dataset.position)
+								update = true;
+
+							this.cacheReferW = refer.width;
+							this.cacheReferH = refer.height;
+							this.cachePosition = this.dataset.position;
+							if (this.cacheLeft == null)
+								update = true;
+
+							if (update || forceUpdate) {
+								this.cacheLeft = this.offsetLeft;
+								this.cacheTop = this.offsetTop;
+								this.cacheWidth = this.offsetWidth;
+								this.cacheHeight = this.offsetHeight;
+							}
+						}
+						queueCssAnimation(animation) {
+							var current = this.style.animation;
+							var animations = this._cssanimations;
+							if (animations == undefined) {
+								animations = [];
+								this._cssanimations = animations;
+								this.addEventListener('animationend', function (e) {
+									if (this.style.animationName != e.animationName)
 										return;
+
+									var current = this.style.animation;
+									var animations = this._cssanimations;
+									while (animations.length) {
+										this.style.animation = animations.shift();
+										if (this.style.animation != current)
+											return;
+
+										animations.current = this.style.animation;
 									}
-									const image = new Image();
-									const url = lib.decade_extGroupImage && lib.decade_extGroupImage[value] || `${decadeUIPath}image/decoration/name_${value}.png`;
-									this._finalGroup = value;
-									image.onerror = () => this.node.campWrap.node.campName.innerHTML = this._finalGroup ? get.translation(this._finalGroup)[0] : '';
-									this.node.campWrap.node.campName.innerHTML = '';
-									this.node.campWrap.node.campName.style.backgroundImage = `url("${url}")`;
-									image.src = url;
-								}
-							});
-						},
-						/node\s*\.\s*node\s*\.\s*link\s*=\s*node\s*\.\s*mark[\s\S]*ui\s*\.\s*create\s*\.\s*div\s*\(\s*node\s*\.\s*node\s*\.\s*identity\s*\)\s*;/
-					);
-					const NonameCard = lib.element.Card;
-					if (NonameCard) lib.element.Card = class extends NonameCard {
+
+									animations.current = '';
+									this.style.animation = '';
+								});
+							}
+
+							if (animations.current || animations.length) {
+								animations.push(animation);
+								return;
+							}
+
+							animations.current = animation;
+							this.style.animation = animation;
+						}
+					};
+					lib.element.Card = class extends lib.element.Card {
 						buildNode() {
 							super.buildNode();
-							this.node.suitnum = ui.create.div('.suit-num', this);
-							this.node.gaintag = ui.create.div('.gaintag.info', this);
-							this.node.judgeMark = ui.create.div('.judge-mark', this);
-							this.node.cardMask = ui.create.div('.card-mask', this);
+							const node = this.node;
+							const suitNumber = this.$suitnum = node.suitnum = ui.create.div('.suit-num', this);
+							this.$gaintag = node.gaintag = ui.create.div('.gaintag.info', this);
+							const judgeMark = node.judgeMark = ui.create.div('.judge-mark', this);
+							node.cardMask = ui.create.div('.card-mask', this);
 							this.$name = ui.create.div('.top-name', this);
-							this.$vertname = this.node.name;
-							this.$equip = this.node.name2;
-							this.$suitnum = this.node.suitnum;
-							this.$range = this.node.range;
-							this.$gaintag = this.node.gaintag;
-							this.$suitnum.$num = decadeUI.element.create(null, this.$suitnum, 'span');
-							this.$suitnum.$num.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
-							this.$suitnum.$suit = decadeUI.element.create('suit', this.$suitnum, 'span');
-							this.$suitnum.$suit.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
-							this.$equip.$suitnum = decadeUI.element.create(null, this.$equip, 'span');
-							this.$equip.$name = decadeUI.element.create(null, this.$equip, 'span');
-							this.node.judgeMark.node = {
-								back: ui.create.div('.back', this.node.judgeMark),
-								mark: ui.create.div('.mark', this.node.judgeMark),
-								judge: ui.create.div('.judge', this.node.judgeMark)
+							this.$vertname = node.name;
+							const equip = this.$equip = node.name2;
+							this.$range = node.range;
+							const numberNode = suitNumber.$num = decadeUI.element.create(null, suitNumber, 'span');
+							numberNode.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
+							const suitNode = suitNumber.$suit = decadeUI.element.create('suit', suitNumber, 'span');
+							suitNode.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
+							equip.$suitnum = decadeUI.element.create(null, equip, 'span');
+							equip.$name = decadeUI.element.create(null, equip, 'span');
+							judgeMark.node = {
+								back: ui.create.div('.back', judgeMark),
+								mark: ui.create.div('.mark', judgeMark),
+								judge: ui.create.div('.judge', judgeMark)
 							};
+						}
+						$init() {
+							super.$init(...arguments);
+							const verticalName = this.$vertname;
+							this.$name.innerHTML = verticalName.innerHTML;
+							let cardNumber = this.number || '';
+							const parsedCardNumber = parseInt(cardNumber);
+
+							if (parsedCardNumber == cardNumber) cardNumber = parsedCardNumber;
+
+							switch (cardNumber) {
+								case 1:
+									this.$suitnum.$num.innerHTML = 'A';
+									break;
+								case 11:
+									this.$suitnum.$num.innerHTML = 'J';
+									break;
+								case 12:
+									this.$suitnum.$num.innerHTML = 'Q';
+									break;
+								case 13:
+									this.$suitnum.$num.innerHTML = 'K';
+									break;
+								default: this.$suitnum.$num.innerHTML = cardNumber.toString();
+							}
+
+							this.$suitnum.$suit.innerHTML = get.translation(this.dataset.suit = this.suit);
+							const equip = this.$equip;
+							const innerHTML = equip.innerHTML;
+							equip.$suitnum.innerHTML = innerHTML.slice(0, innerHTML.indexOf(' '));
+							equip.$name.innerHTML = innerHTML.slice(innerHTML.indexOf(' '));
+							const node = this.node;
+							const background = node.background;
+							node.judgeMark.node.judge.innerHTML = background.innerHTML;
+							const classList = background.classList;
+
+							if (classList.contains('tight')) classList.remove('tight');
+
+							const cardStyle = this.style;
+
+							if (cardStyle.color) cardStyle.removeProperty('color');
+
+							if (cardStyle.textShadow) cardStyle.removeProperty('text-shadow');
+
+							const info = node.info;
+							const infoStyle = info.style;
+
+							if (infoStyle.opacity) infoStyle.removeProperty('opacity');
+
+							const verticalNameStyle = verticalName.style;
+
+							if (verticalNameStyle.opacity) verticalNameStyle.removeProperty('opacity');
+
+							if (info.childElementCount) while (info.firstChild) {
+								info.removeChild(info.lastChild);
+							}
+
+							if (equip.childElementCount) while (equip.firstChild) {
+								equip.removeChild(equip.lastChild);
+							}
+
+							if (decadeUI.config.cardPrettify) {
+								const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {});
+								const cardNature = this.nature;
+								const cardName = this.name;
+								const fileName = cardNature ? `${cardName}_${get.natureList(cardNature).sort(lib.sort.nature).join('_')}` : cardName;
+								let decadeCardSource = decadeExtCardImage[fileName];
+								if (!decadeCardSource && cardName != fileName) decadeCardSource = decadeExtCardImage[cardName];
+
+								if (decadeCardSource) {
+									this.classList.add('decade-card');
+
+									if (!this.classList.contains('infohidden')) this.style.backgroundImage = `url('${this.decadeCardSource = decadeCardSource}')`;
+
+									const avatar = this.node.avatar;
+
+									if (avatar) avatar.remove();
+
+									const frameBackground = this.node.framebg;
+
+									if (frameBackground) frameBackground.remove();
+
+									new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
+										const target = mutationRecord.target;
+										const informationHidden = target.classList.contains('infohidden');
+
+										if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
+
+										if (informationHidden) target.style.removeProperty('background-image');
+										else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
+									})).observe(this, {
+										attributeFilter: ['class'],
+										attributeOldValue: true
+									});
+								}
+							}
+
+							return this;
+						}
+						moveDelete(player) {
+							this.fixed = true;
+							this.moveTo(player);
+							setTimeout(function (card) {
+								card.delete();
+							}, 460, this);
+						}
+						moveTo(player) {
+							if (!player)
+								return;
+
+							var arena = dui.boundsCaches.arena;
+							if (!arena.updated)
+								arena.update();
+
+							player.checkBoundsCache();
+							this.fixed = true;
+							var x = Math.round((player.cacheWidth - arena.cardWidth) / 2 + player.cacheLeft);
+							var y = Math.round((player.cacheHeight - arena.cardHeight) / 2 + player.cacheTop);
+							var scale = arena.cardScale;
+
+							this.tx = x;
+							this.ty = y;
+							this.scaled = true;
+							this.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + scale + ')';
+							return this;
 						}
 						copy() {
 							const node = super.copy(...arguments);
-							node.nature = this.nature;
 							node.decadeCardSource = this.decadeCardSource;
+
 							if (this.clone && node.classList.contains('decade-card')) new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
 								const target = mutationRecord.target, informationHidden = target.classList.contains('infohidden');
+
 								if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
+
 								if (informationHidden) target.style.removeProperty('background-image');
 								else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
 							})).observe(node, {
 								attributeFilter: ['class'],
 								attributeOldValue: true
 							});
+
 							return node;
 						}
 					};
-					else {
-						/**
-						 * @legacy
-						 */
-						Mixin.redirect(
-							'lib.element.card.copy',
-							/(?=\s*node\s*\.\s*classList\s*\.\s*remove\s*\(\s*'hidden'\s*\)\s*;)/,
-							function (node) {
-								node.nature = this.nature;
-								node.decadeCardSource = this.decadeCardSource;
-							},
-							/(?=\s*return\s*node\s*;)/,
-							function (clone, node) {
-								if (clone && node.classList.contains('decade-card')) new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
-									const target = mutationRecord.target, informationHidden = target.classList.contains('infohidden');
-									if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
-									if (informationHidden) target.style.removeProperty('background-image');
-									else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
-								})).observe(node, {
-									attributeFilter: ['class'],
-									attributeOldValue: true
-								});
+					lib.element.GameEvent = class extends lib.element.GameEvent {
+						addMessageHook(message, callback) {
+							if (this._messages == undefined)
+								this._messages = {};
+
+							message = message.toLowerCase();
+							if (this._messages[message] == undefined)
+								this._messages[message] = [];
+
+							message = this._messages[message];
+							message.push(callback);
+						}
+						triggerMessage(message) {
+							if (this._messages == undefined)
+								return;
+
+							message = message.toLowerCase();
+							if (this._messages[message] == undefined)
+								return;
+
+							message = this._messages[message];
+							for (var i = 0; i < message.length; i++) {
+								if (typeof message[i] == 'function')
+									message[i].call(this);
 							}
-						);
-						/**
-						 * @legacy
-						 */
-						Mixin.redirect(
-							'ui.create.card',
-							/(?=\s*node\s*\.\s*node\s*\.\s*intro\s*\.\s*innerHTML\s*=\s*lib\s*\.\s*config\s*\.\s*intro\s*;)/,
-							node => {
-								node.node.suitnum = ui.create.div('.suit-num', node);
-								node.node.gaintag = ui.create.div('.gaintag.info', node);
-								node.node.judgeMark = ui.create.div('.judge-mark', node);
-								node.node.cardMask = ui.create.div('.card-mask', node);
-								node.$name = ui.create.div('.top-name', node);
-								node.$vertname = node.node.name;
-								node.$equip = node.node.name2;
-								node.$suitnum = node.node.suitnum;
-								node.$range = node.node.range;
-								node.$gaintag = node.node.gaintag;
-								node.$suitnum.$num = decadeUI.element.create(null, node.$suitnum, 'span');
-								node.$suitnum.$num.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
-								node.$suitnum.$suit = decadeUI.element.create('suit', node.$suitnum, 'span');
-								node.$suitnum.$suit.style.fontFamily = '"STHeiti","SimHei","Microsoft JhengHei","Microsoft YaHei","WenQuanYi Micro Hei",Helvetica,Arial,sans-serif';
-								node.$equip.$suitnum = decadeUI.element.create(null, node.$equip, 'span');
-								node.$equip.$name = decadeUI.element.create(null, node.$equip, 'span');
-								node.node.judgeMark.node = {
-									back: ui.create.div('.back', node.node.judgeMark),
-									mark: ui.create.div('.mark', node.node.judgeMark),
-									judge: ui.create.div('.judge', node.node.judgeMark)
-								};
-							}
-						);
-					}
-					const NonameDialog = lib.element.Dialog;
-					if (NonameDialog) lib.element.Dialog = class extends NonameDialog {
+
+							this._messages[message] = [];
+						}
+					};
+					lib.element.Dialog = class extends lib.element.Dialog {
 						constructor() {
 							const dialog = super(...arguments);
 							dialog.bar1.remove();
@@ -6761,71 +5856,14 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							return dialog;
 						}
 					};
-					else Mixin.redirect(
-						'ui.create.dialog',
-						/\s*dialog\s*\.\s*bar\d*\s*=\s*ui\s*\.\s*create\s*\.\s*div\s*\([\s\S]*?\)\s*;/g
-					);
-					Mixin.redirect(
-						'lib.element.Card.prototype.init | lib.element.card.init',
-						/\s*else\s*if\s*\(\s*lib\s*\.\s*card\s*\[\s*bg\s*\]\s*\.\s*image\s*==\s*'background'\s*\)\s*{[\s\S]*?}/,
-						'',
-						/\s*if\s*\(\s*this\s*\.\s*node\s*\.\s*background\s*\.innerHTML\s*\.\s*length\s*>\s*1\s*\)\s*this\s*\.\s*node\s*\.\s*background\s*\.classList\s*\.[\s\S]*\('tight'\)\s*;/,
-						'',
-						/\s*if\s*\(\s*info\s*\.\s*color\s*\)\s*{[\s\S]*?else\s*{[\s\S]*?}/,
-						'',
-						/(?=\s*if\s*\(\s*card\s*\[\s*2\]\s*==\s*'sha'\s*\)\s*{)/,
-						function (card, cardnum) {
-							this.dataset.suit = card[0];
-							this.$suitnum.$num.textContent = cardnum;
-							this.$suitnum.$suit.textContent = get.translation(card[0]);
-						},
-						/\s*this\s*\.\s*node\s*\.\s*name\s*\.\s*innerHTML\s*=[\s\S]*name\s*;/,
-						function (name, card, cardnum) {
-							this.$name.innerHTML = name;
-							this.$vertname.innerHTML = name;
-							this.$equip.$suitnum.innerHTML = `${get.translation(card[0])}${cardnum}`;
-							this.$equip.$name.innerHTML = ` ${name}`;
-						},
-						/\s*this\s*\.\s*node\s*\.\s*range\s*\.\s*innerHTML\s*=\s*''\s*;[\s\S]*break\s*;\s*}/,
-						'',
-						' <span class="cardtag">',
-						'',
-						/\s*tagstr\s*\+=\s*'<\/span>'\s*;\s*this\s*\.\s*node\s*\.\s*range\s*\.\s*innerHTML\s*\+=\s*tagstr\s*;/,
-						function (tagstr) {
-							this.$range.innerHTML = tagstr;
-							this.$range.classList.add('card-tag');
-						},
-						/(?=\s*return\s*this\s*;)/,
-						function (card) {
-							if (decadeUI.config.cardPrettify) {
-								const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {}), fileName = card[3] ? `${card[2]}_${get.natureList(card[3]).sort(lib.sort.nature).join('_')}` : card[2];
-								let decadeCardSource = decadeExtCardImage[fileName];
-								if (!decadeCardSource && card[2] != fileName) decadeCardSource = decadeExtCardImage[card[2]];
-								if (decadeCardSource) {
-									this.classList.add('decade-card');
-									if (!this.classList.contains('infohidden')) this.style.backgroundImage = `url('${this.decadeCardSource = decadeCardSource}')`;
-									if (this.node.avatar) this.node.avatar.remove();
-									if (this.node.framebg) this.node.framebg.remove();
-									new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
-										const target = mutationRecord.target, informationHidden = target.classList.contains('infohidden');
-										if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
-										if (informationHidden) target.style.removeProperty('background-image');
-										else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
-									})).observe(this, {
-										attributeFilter: ['class'],
-										attributeOldValue: true
-									});
-								}
-							}
-						}
-					);
-					Mixin.redirect(
+					Mixin.replace(
 						'lib.element.Dialog.prototype.add | lib.element.dialog.add',
 						/(?=\s*this\s*\.\s*buttons\s*=\s*this\s*\.\s*buttons\s*\.\s*concat\s*\(\s*ui\s*\.\s*create\s*\.\s*buttons\s*\(\s*item\s*\[\s*0\s*\]\s*,\s*item\[\s*1\s*\]\s*,\s*buttons\s*,\s*noclick\s*\)\s*\)\s*;)/,
 						function (item, buttons) {
 							if (typeof item[1] == 'string' && item[1].includes('character')) {
 								if (this.intersection == undefined && self.IntersectionObserver) this.intersection = new IntersectionObserver((intersectionObserverEntries, intersectionObserver) => intersectionObserverEntries.forEach(intersectionObserverEntry => {
 									if (intersectionObserverEntry.intersectionRatio <= 0) return;
+
 									const target = intersectionObserverEntry.target;
 									target.setBackground(target.awaitItem, 'character');
 									intersectionObserver.unobserve(target);
@@ -6838,7 +5876,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 						}
 					);
-					Mixin.redirect(
+					Mixin.replace(
 						'lib.skill._discard.content',
 						/(?=\s*var\s*todiscard\s*=\s*ui\s*\.\s*todiscard\s*\[\s*id\s*\]\s*;)/,
 						() => {
@@ -6849,6 +5887,9 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 						}
 					);
+					ui.updateRoundNumber = (roundNumber, cardPileNumber) => {
+						if (ui.cardPileNumber && window.decadeUI) ui.cardPileNumber.textContent = `牌堆${cardPileNumber} 第${roundNumber}轮`;
+					};
 				},
 				dialog: {
 					create: function (className, parentNode, tagName) {
@@ -8197,7 +7238,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					var translated = false;
 					if (!chinese) {
 						switch (mode) {
-							case 'identity': case 'huanhuazhizhan': case 'th_mougong':
+							case 'identity': case 'huanhuazhizhan':
 								if (!player.isAlive() || player.identityShown || player == game.me) {
 									identity = (player.special_identity ? player.special_identity : identity).replace(/identity_/, '');
 								}
@@ -8249,7 +7290,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 					} else {
 						switch (mode) {
-							case 'identity': case 'huanhuazhizhan': case 'th_mougong':
+							case 'identity': case 'huanhuazhizhan':
 								if (identity.indexOf('cai') < 0) {
 									if (isMark) {
 										if (player.special_identity) identity = player.special_identity + '_bg';
@@ -8967,147 +8008,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			};
 
 			decadeUI.game = {
-				loop: function () {
-					if (game.looping) return false;
-					game.looping = true;
-					var event = _status.event;
-					var step = event.step;
-					var source = event.source;
-					var player = event.player;
-					var target = event.target;
-					var targets = event.targets;
-					var card = event.card;
-					var cards = event.cards;
-					var skill = event.skill;
-					var forced = event.forced;
-					var num = event.num;
-					var trigger = event._trigger;
-					var result = event._result;
-					if (decadeUI.eventDialog) {
-						decadeUI.game.wait();
-						return false;
-					}
-
-					if (!game.loopTime)
-						game.loopTime = performance.now();
-					if ((_status.paused2 || _status.imchoosing) && !lib.status.dateDelaying) {
-						lib.status.dateDelaying = new Date();
-					}
-
-					if (_status.paused || _status.paused2 || _status.over) {
-						game.loopTime = undefined;
-						return false;
-					}
-
-					if (_status.paused3) {
-						_status.paused3 = 'paused';
-						game.loopTime = undefined;
-						return false;
-					}
-					if (lib.status.dateDelaying) {
-						lib.status.dateDelayed += lib.getUTC(new Date()) - lib.getUTC(lib.status.dateDelaying);
-						lib.status.dateDelaying = undefined;
-					}
-
-					if (event.next.length > 0) {
-						var next = event.next.shift();
-						if (next.player && next.player.skipList.contains(next.name)) {
-							event.trigger(next.name + 'Skipped');
-							next.player.skipList.remove(next.name);
-							if (lib.phaseName.contains(next.name)) next.player.getHistory('skipped').add(next.name);
-						} else {
-							next.parent = event;
-							_status.event = next;
-							game.getGlobalHistory('everything').push(next);
-						}
-					} else if (event.finished) {
-						if (event._triggered == 1) {
-							if (event.type == 'card') event.trigger('useCardToOmitted');
-							event.trigger(event.name + 'Omitted');
-							event._triggered = 4;
-						} else if (event._triggered == 2) {
-							if (event.type == 'card') event.trigger('useCardToEnd');
-							event.trigger(event.name + 'End');
-							event._triggered = 3;
-						} else if (event._triggered == 3) {
-							if (event.type == 'card') event.trigger('useCardToAfter');
-							event.trigger(event.name + 'After');
-							event._triggered++;
-						} else if (event.after && event.after.length) {
-							var next = event.after.shift();
-							if (next.player && next.player.skipList.contains(next.name)) {
-								event.trigger(next.name + 'Skipped');
-								next.player.skipList.remove(next.name);
-								if (lib.phaseName.contains(next.name)) next.player.getHistory('skipped').add(next.name)
-							} else {
-								next.parent = event;
-								_status.event = next;
-							}
-						} else {
-							if (event.triggerMessage)
-								event.triggerMessage('finished');
-
-							if (event.parent) {
-								if (event.result) event.parent._result = event.result;
-								_status.event = event.parent;
-							} else {
-								game.loopTime = undefined;
-								game.loopLocked = false;
-								return false;
-							}
-						}
-					} else {
-						if (event._triggered == 0) {
-							if (event.type == 'card') event.trigger('useCardToBefore');
-							event.trigger(event.name + 'Before');
-							event._triggered++;
-						} else if (event._triggered == 1) {
-							if (event.type == 'card') event.trigger('useCardToBegin');
-							if (event.name == 'phase' && !event._begun) {
-								var next = game.createEvent('phasing', false, event);
-								next.player = event.player;
-								next.skill = event.skill;
-								next.setContent('phasing');
-								event._begun = true;
-							} else {
-								event.trigger(event.name + 'Begin');
-								event._triggered++;
-							}
-						} else {
-							if (player && player.classList.contains('dead') && !event.forceDie && event.name != 'phaseLoop') {
-								game.broadcastAll(function () {
-									while (_status.dieClose.length) {
-										_status.dieClose.shift().close();
-									}
-								});
-								if (event._oncancel) {
-									event._oncancel();
-								}
-								event.finish();
-							} else if (player && player.removed && event.name != 'phaseLoop') {
-								event.finish();
-							} else if (player && player.isOut() && event.name != 'phaseLoop' && !event.includeOut) {
-								if (event.name == 'phase' && player == _status.roundStart && !event.skill) {
-									_status.roundSkipped = true;
-								}
-								event.finish();
-							} else {
-								decadeUI.game.tryContent(event, step, source, player, target, targets, card, cards, skill, forced, num, trigger, result, _status, lib, game, ui, get, ai);
-							}
-							event.step++;
-						}
-					}
-
-					var delta = performance.now() - game.loopTime;
-					if (delta > 15 && decadeUI.config.smoothMode) {
-						game.loopTime = undefined;
-						requestIdleCallback(game.loop, { timeout: 16 });
-						return false;
-					}
-
-					return true;
-				},
-
 				wait: function () {
 					game.pause();
 				},
@@ -9126,20 +8026,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 					} else {
 						_status.paused = false;
-					}
-				},
-
-				tryContent: function (event, step, source, player, target, targets, card, cards, skill, forced, num, trigger, result, _status, lib, game, ui, get, ai) {
-					if (_status.withError || lib.config.compatiblemode || (_status.connectMode && !lib.config.debug)) {
-						try {
-							event.content(event, step, source, player, target, targets, card, cards, skill, forced, num, trigger, result, _status, lib, game, ui, get, ai);
-						} catch (e) {
-							game.print('游戏出错：' + event.name);
-							game.print(e.toString());
-							console.log(e);
-						}
-					} else {
-						event.content(event, step, source, player, target, targets, card, cards, skill, forced, num, trigger, result, _status, lib, game, ui, get, ai);
 					}
 				}
 			};
@@ -9286,10 +8172,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 		config: {
 			eruda: {
 				name: '调试助手(开发用)',
-				init: false,
-			},
-			smoothMode: {
-				name: '流畅模式',
 				init: false,
 			},
 			rightLayout: {
@@ -9588,304 +8470,3 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 		editable: false
 	};
 });
-
-/*
-1.9.97.6.2：修复不是本扩展卡牌图片溢出，因判定不能及时清理弃牌区，更正势力颜色，技能按钮位置。
-1.9.97.6.3：修复类似邓小艾这种判定没有标记的bug，对决模式可能正常换装备了。新增自定义势力字图，直接放到(十周年UI/image/decoration/name_你的势力名.webp)，如果不存自动用字体代替。
-1.9.97.6.5：修复国战模式势力名显示错误，新增新版布局。
-1.9.97.9.1：新增身份面具，identity_你的身份名.webp，暂时关闭pc版判定牌的信息(有bug没电脑)。
-1.9.97.9.2：优化对决模式中的对抗4v4显示身份面具一样，另一个命名为identity_身份名_false.webp。
-1.9.98.1.1：修复游戏原版的界面缩放问题，以便更好的适配布局。增加红色技能标记。
-1.9.98.1.2：修正了在新版布局未亮明武将牌的情况下装备不能正常显示，以及调整角色背景，可以自定义透明图片了，适当调宽其他玩家装备显示。
-1.9.98.1.3：修复因缺少素材而造成显示身份名不正确的bug。
-1.9.98.1.4：新增卡牌素材开关，卡牌左边辅助名称开关。
-1.9.98.1.5：现在游戏1.8版本也能用了，不过我发现没有1.9版本流畅。
-1.9.98.1.6：修复缩放问题。
-1.9.98.1.7：修复PC版判定牌，新增缩放防抖动（但会模糊点）。
-1.9.98.1.8：新增秃头皮肤使用开关（必须有秃头皮肤），双将默认为左右布局；调整缩放后造成的画面抖动，修正展示手牌过大的问题，修复势力名素材无法正确加载的问题。
-1.9.98.1.9：修复：菜单栏显示偏移，武将选择框小；新增：人名字体自由设置，扩展联机可用。
-1.9.98.1.10：修复：因联机引起的扩展加载错误。
-1.9.98.1.11：
-- 新增可变关闭的击杀特效、死亡特效，边框可以自由选择等阶；
-- 血条框现在根据血量上限自动变化；
-- 无限血量现在正常显示为 ∞ / ∞;
-- 卡牌美化素材增加：国战、衍生；
-- 修正只明置单将的情况下显示错误；
-- 修正卡牌辅助名称上下的间距过大；
-- 修正张宝符咒的技能标记显示错误；
-1.9.98.1.12：
-- 修复1.8版本特效失效。
-1.9.98.1.13：
-- 修复1.8版本特效失效。
-1.9.98.2.4.1：
-- 新增指示线特效（可关闭）；
-- 玩家击杀自己时不再会显示击杀动画；
-- 任意一方玩家没有明置的武将不再会触发击杀动画；
-- 国战君主阵亡文字正常显示，玩家阵亡复活后阵亡文字仍显示修复；
-1.9.98.2.4.2：
-- 新增拼点框特效；
-- 其他玩家装备位置修正；
-- 替换卡牌的素材只需要在扩展目录正确命名即可；
-1.9.98.2.4.3：
-- 修复武将不能点击查看详情；
-- 修复无法正常加载卡牌素材；
-1.9.98.2.4.4：
-- 修复bug；
-1.9.98.3.2.1：
-- 视为某牌、联机进度条、菜单栏、标记菜单位置调整，指示线速度调整；
-1.9.98.3.2.2：
-- 增加获得的技能显示（如幻化之战、合纵抗秦）；
-- 修复王朗拼点、刘璋卡牌显示、阵法卡牌摸牌错误等其他BUG；
-- 修正特殊坐骑牌位置；
-- 修正标记的显示位置；
-1.9.98.3.2.3：
-- 又㕛叒叕修复标记偏移了；
-- 武将获得的技能显示可以关闭；
-- 有想试试观星效果的可以再准备阶段（下次估计会更改方法= =）：
-- var cads = get.cards(5)；
-- decadeUI.content.chooseGuanXing(player, cards, 5, null, 5);
-1.9.98.3.2.4：
-- 没更新啥内容，小修了下观星；
-- 以及可能修复了笨战万里的不能选择；
-1.9.98.3.2.5：
-- 调整及修复观星界面；
-1.9.98.3.2.6：
-- 优化观星界面；
-1.9.98.3.2.7：
-- 修复观星托管BUG；
-1.9.98.4.2.1：
-- 修复类似【严教】技能的BUG；
-1.9.98.4.2.2：
-- 增加【杀】【闪】出牌特效（可关闭）；
-- 【视为牌】雷属性增加闪电背景；
-- 修复结算、标记卡牌大小；
-- 修复移动端无法选择装备；
-1.9.98.4.3.1：
-- 修复【视为牌】的杀闪特效显示；
-1.9.98.4.4.1：
-- 移植演示观星UI的几个技能（联机模式关闭），替换的是【界观星】、【称象】、【罪论】、【恂恂】、【点化】、【纵玄】；
-1.9.98.4.4.2：
-- 新增修复原版【木牛流马】不能很好使用的问题，如改判、丈八等（测试阶段中。。）；
-- 修复观星UI的几个技能音效问题；
-1.9.98.4.4.3：
-- 调整【木牛流马】用牌的规则；
-1.9.98.4.4.4：
-- 增加老【观星】的UI；
-- 修复联机模式判定区未显示标记；
-- 修复联机对抗模式自动开始的BUG；
-- 修复武将详情标记文字偏移；
-- 修复挑战模式的弹窗；
-1.9.98.4.5.1:
-- 修复联机模式其他玩家没有【十周年UI】扩展不能出牌的BUG；
-- 修正联机模式进度条显示位置；
-1.9.98.5.0.1:
-- 增加唐咨【恂恂】、国战君张角【悟心】的UI；
-- 修复类似荀攸【奇策】、刘堪【战绝】会弃掉【木牛流马】里的牌的BUG；
-- 修复【木牛流马】有牌自己没有手牌，也能发动类似曹睿【明鉴】的技能的BUG；
-- 修复【木牛流马】有牌自己没有手牌，敌方也对自己释放【火攻】的BUG；
-- 调整类似【对策】拼牌的动画为丢牌动画；
-- 调整联机模式中击杀特效由客机自己控制；
-1.9.98.5.1.1:
-- 增加了角色座位号显示(联机模式下只有房主有UI才显示)；
-- 修复技能动画会让【木牛流马】显示的BUG；
-- 修复身份模式特殊身份【军师】技能只显示牌堆顶的BUG；
-- 优化【纵玄】AI无脑发动，现在根据会根据情况发动了；
-1.9.98.5.1.2:
-- 优化了常用的字体预加载；
-- 修正了血条显示，如3/Infinity，3/∞，NaN显示为×；
-- 修正出牌记录阻挡牌堆牌数记录显示；
-1.9.98.7.0.1:
-- 新增联机模式聊天框（暂时没弄表情），美化音量条；
-- 修复国战诸葛亮师徒观星牌数问题；
-- 修复【纵玄】其他人能观看移动的牌问题；
-- 修复类似陈琳【颂词】AI因【木牛流马】计算目标手牌不正常的问题；
-- 可能修复先亮的野副将，后变成君主将还是野的问题；
-1.9.98.7.0.2:
-- 修复联机模式创建房间自动开始的BUG；
-1.9.99.2.0.1:
-- 新增了曹植【落英】技能显示框；
-- 修复了国战野势力仍为原势力问题；
-- 修正了圆角大小会影响角色；
-- 优化了幻化之战目标信息遮挡；
-- 优化了AI观星技能没有合适的改判牌不全下的问题；
-1.9.99.2.0.2:
-- 新增了枣恭介(DIY包)技能【设控】、界曹植【落英】的UI； 
-- 修复了曹植【落英】技能因游戏速度过快而不能获得牌的问题；
-- 修正了1点血量上限血条框的高度问题；
-1.9.99.3.0.1:
-- 修复界/曹植的【落英】AI不获得牌的问题；
-- 修复界曹植的【落英】配音；
-- 修复视为卡牌名称的问题；
-1.9.100.0.0.1:
-- 修复新版引起的技能BUG；
-1.9.100.2.0.1:
-- 修复【落英】AI引起的界面卡住问题；
-1.9.100.4.2.1:
-- 优化带了有观星类UI技能的AI排序牌的问题；
-- 修复界太史慈拼点，官渡许攸BUG，键枣宗介的【设控】AI弹窗；
-- 调整界/曹植的落英获得牌操作顺序；
-1.9.103.4.0.1:
-- 修复了某些情况扩展已经载入无法使用的BUG；
-- 修复了发动【拼点】时在发动拼点窗口不会消失的BUG（由寰宇星城提供代码，未验证）；
-- 增加了主玩家空装备的五个武器图标；
-- 增加了【默认】布局；
-1.9.105.1.0.1:
-- 增加了[游戏开始、诸葛连弩、八卦阵、仁王盾]动画
-- 修复了默认布局主玩家受伤动画错位的BUG
-1.9.105.1.0.2:
-- 优化了动画的预加载，提升流畅度；
-- 增加了[藤甲、白银狮子、麒麟弓、丈八蛇矛、青龙偃月刀、寒冰剑、古锭刀、贯石斧、方天画戟、雌雄双股剑]动画；
-1.9.105.3.0.1:
-- 修复动画多次绘制的BUG；
-- 修复[藤甲、贯石斧]不能播放动画的BUG；
-- 修复了某些设备不支持"webgl"导致不能加载本扩展的BUG；
-- 增加了[朱雀羽扇]动画；
-- 增加了[伤害、治疗]动画；
-- 优化了[游戏开始]动画的加载时机；
-1.9.105.4.0.1:
-- 修复了失去体力时也会播放[伤害]动画的BUG；
-- 增加了[逐鹿天下]包相关装备的动画(有几个播放不了，等待游戏修复而修复)；
-- 优化了所有动画的大小；
-1.9.105.4.0.2:
-- 修复了装备牌[女装、折戟、驽马]动画播放问题；
-- 增加了基本牌[黑杀、红杀、雷杀、火杀、闪、桃、酒]的相关动画；
-1.9.105.5.0.1:
-- 优化了[击杀特效]动画；
-- 增加了[阵亡破碎、南蛮入侵、乐不思蜀、闪电、兵粮寸断、无懈可击、万箭齐发、桃园结义、顺手牵羊、火攻、过河拆桥、五谷丰登]动画；
-- 新增动态背景[马云禄、曹节、大乔、鲍三娘、小杀]；
-- 将受伤动画调整为数字一并显示；
-1.9.105.5.1.1:
-- 修复[兵粮思蜀]的BUG；
-- 修复默认布局标记显示错位；
-- 动态背景只加载所选资源；
-- 优化界面一丢丢性能问题；
-1.9.105.6.1.3:
-- 优化主玩家手牌显示(滚动拖动)；
-- 优化击杀特效的显示时机；
-- 新增很多个动态人物背景；
-1.9.105.7.0.1:
-- 修复不能导入扩展的BUG；
-- 再次的再次优化击杀特效；
-- 新增发动[限定技]的动画；
-- 稍微延时游戏开始时机，提升流畅度；
-1.9.105.9.0.1:
-- 将张琪瑛的[点化]调整为最新版本；
-- 将武将评级替换为A、S、SS、SSS图标；
-- 修复翻面牌移动的BUG；
-- 修复限定动画资源缓存的BUG；
-- 修复已经修复过的BUG；
-1.9.105.9.1.1:
-- 优化选将露头皮肤显示；
-- 修复重复修复的BUG；
-1.9.105.9.1.2:
-- 将[南蛮入侵]大象腿特效替换为原卡牌的特效；
-- 修复选将预览切换皮肤不更新显示的BUG；
-1.9.105.10.0.1:
-- 增加【身在曹营心在汉】的彩蛋
-- 优化[落英]AI拿牌显示时的速度；
-1.9.106.0.0.1:
-- 增加[流畅模式]功能，可能略微降低游戏出牌速度；
-- 增加[花鬘-花俏蛮娇]、[花鬘-经典形象]动态背景；
-- 修复最新版不显示出牌特效的BUG（临时打磨）；
-1.9.108.4.1.1:
-- 新增[辛宪英-英装素果]、[诸葛果-英装素果]、[张春华-战场绝版]、[大乔小乔-战场绝版]、[伏皇后-万福千灯]、[吴苋-锦运福绵]动态背景；
-- 新增DIY包久岛欧/野村美希的【幻梦】、应变篇【洞烛先机】的显示UI；
-- 修复chooseTuUse代码；
-1.9.108.4.1.5:(星城代耕)
-- 适配最新无名杀版本，修改木牛流马。,
-- 增加装备栏在左边的新样式。,
-- 修复了国战无法标记晋势力的问题,
-- 修复了晋势力颜色,
-- 其它BUG的修复
-1.9.110.1.1.0:
-- 修正木牛流马；
-- 修复晋势力异常显示；
-- 新增[大乔-清萧清丽]、[孙鲁育-娇俏伶俐]、[何太后-鸩毒除患]、[张星彩-凯旋星花]、[张琪瑛-岁稔年丰]、[夏侯氏-战场绝版]、[孙鲁班-宵靥谜君]、[董白-娇俏伶俐]、[郭照-雍容尊雅]、[周妃-晴空暖鸢]、[樊玉凤-斟酒入情]；
-- 拼点按照无名杀本体的要求，添加同时失去牌的机制。
-- 增加边框随击杀数改变的设置。
-1.9.110.8.5.1：
-- 新增卡牌[知己知彼]、[铁锁连环]、[逐鹿天下]、[树上开花]、[草船借箭]、[远交近攻]的使用特效；
-- 新增武将翻面动画及素材，铁索素材，判定特效；
-- 新增卡牌美化图片格式选项[关闭、WEBP、PNG]；
-- 将部分图片素材的格式统一改为PNG(以后也是)，为了兼容如IOS系统；
-- 优化人物边框阴影发光，以及受伤动画；
-- 优化部分代码，提升加载速度及流畅度；
-- 优化界面操作按钮的布局与对应素材图；
-- 优化原有颜色标记的样式，增加动画性；(转换技显示+-)
-- 修复了身份面具在对应模式不显示问题；
-- 修复界面出牌提示文字被操作按钮遮住；
-- 修复spine 读取多张素材图出错的问题(spine 部分函数名已更换)；
-- 预计下个版本增加可选的动态皮肤功能；
-1.9.110.9.1：
-- 优化身份标记框界面；
-- 优化拼点框发动界面；
-- 优化聊天泡泡框界面；
-- 适配新版的判断生效；(judge2)
-- 修复出牌特效过快引起的问题；
-- 修复其他模式阵亡身份的显示问题；
-- 增加了动态皮肤功能，目前只考虑了单武将，后续慢慢优化，相关示例请打开动态皮肤示例开关，如没有显示请检查assets/dynamic下的动皮文件是否完整。
-  动态皮肤功能后续只做优化，具体全动皮实现自行解决或者由其他皮肤扩展实现；
-1.9.110.9.2.2：
-- 增加使用过的牌转换显示；
-- 增加动态皮肤的露头开关，默认预览武将为张琪瑛，相关配置文件为dynamicSkin.js；
-- 调整卡牌的发光阴影为指定素材显示；
-- 优化卡名辅助显示，范围显示可一同控制；
-- 修复结束回合按钮不靠左的问题；
-- 修复对话框中不可选中的卡牌的显示样式；
-- 修复阵亡身份变灰、不正确显示翻面的问题；
-1.9.110.9.2.3：
-- 新增动态背景[何太后-蛇蝎为心]；
-- 新增默认动皮武将有界马超、鲍三娘、魏蔡文姬、大乔、小乔、大乔小乔、貂蝉、郭照、黄月英、何太后、
-  花鬘、陆郁生、马云禄、潘淑、孙鲁班、孙鲁育、孙尚香、蜀香香、王元姬、王异、吴苋、夏侯氏、小乔、
-  辛宪英、徐氏、杨婉、张菖蒲、张星彩、甄姬、周妃、诸葛果，以及界限突破后的(非界马超除外)。
-- 新增动皮高清自适应开关(移动端效果显著)；
-- 更新 game.check 函数代码；
-- 修复某些动皮白边显示问题；
-- 修复初次导入扩展弹窗问题；
-- 修复弃牌堆不是转换牌也显示的问题；
-- 修复开启动皮后阵亡、翻面不显示问题；
-1.9.110.9.3.5：
-- 新增动态背景[大　乔-衣垂绿川]、[小　乔-采莲江南]、[蜀香香-花曳心牵];
-- 新增动态背景小杀的彩蛋；
-- 新增双武将动态皮肤支持；
-- 优化动画相关的布局逻辑;
-- 优化动皮的显示过度动画；
-- 优化代码，提升加载速度；
-- 优化手机端窗口过小问题；
-- 修复手机端按钮大小问题；
-- 修复部分卡牌的判断显示；
-- 修复受伤时动画与体力条未同步的问题；
-- 修复替换武将后动皮未正确显示的问题；
-- 由于动态皮肤过多会导致特效丢失，因此作出以下数量限制；
-  chrome 69 及以上的内核版本，手机端限制在10个，PC端限制在18个；
-  chrome 69 　以下的内核版本，手机端限制在 2个，PC端限制在10个；
-  在控制台输入代码：navigator.appVersion，会返回你的chrome版本；
-- windows端闪屏的请使用诗笺的64位版(chrome 91~)，或者原版的win由里版(chrome 51)，或者自行
-  打包electron 10.4.7(chrome 85) ~ 4.0.0(chrome 69);
-1.1.0.211130：
-- 新增动皮[诸葛果仙池起舞]及其背景；
-- 新增界武将标记显示及其对应的开关；
-- 优化字体加载，配置font.css后秒开；
-- 优化卡牌素材加载时机，提升流畅度；
-- 优化出牌阶段与技能使用时文本提示；
-- 优化武将的发光阴影时机并改为动图；
-- 优化露头动皮其他特效部件显示范围；
-  优化露头动皮有：大乔-衣垂绿川、小乔-采莲江南、何太后-蛇蝎为心、徐氏-为夫弑敌；
-- 调整高清动皮自适应功能默认为开启；
-- 修复在低内核版本下动皮的模糊问题；
-- 修复挑战模式下BOSS图片消失的问题；
-- 修复对决模式下选将图片消失的问题；
-- 关于动皮数量限制，手机端请把chrome 内核更新到90及以上；
-1.2.0.220114:
-- 新增动皮及背景：[曹节-凤历迎春]、[曹婴-巾帼花舞]、[貂蝉-战场绝版]、[何太后-耀紫迷幻]、[王荣-云裳花容]、[吴苋-金玉满堂]、[周夷-剑舞浏漓]；
-- 新增动皮oncomplete支持(函数内部只能调用this.xxx代码)；
-- 优化了主玩家攻击指示线的位置显示；
-- 优化了主玩家出牌摸牌相关呈现动画；
-- 优化折叠手牌，开关跟随系统的设置；
-- 优化部分代码，提升游戏整体流畅度；
-- 修复关闭界包后因界标记弹窗的问题；
-- 修复挑战模式下界武将名丢失的问题；
-- 修复挑战模式下动皮异常拉伸的问题；
-- 修复了加载其他目录的特效文件问题；
-- 修复低版本窗口改动后动皮模糊问题；
-*/

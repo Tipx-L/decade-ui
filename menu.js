@@ -1,6 +1,6 @@
 'use strict';
 decadeModule.import((lib, game, ui, get, ai, _status) => {
-	Mixin.redirect(
+	Mixin.replace(
 		'ui.create.menu',
 		/\s*\/\s*game\s*\.\s*documentZoom\s*/g,
 		'',
