@@ -47,8 +47,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 	};
 	let versionMD;
 	try {
-		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).split(/\r\n|\r|\n/);
-		if (!versionMD[versionMD.length - 1]) versionMD.pop();
+		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).trim().split(/\r\n|\r|\n/);
 	}
 	catch (ignored) {
 		versionMD = ["", ""];
@@ -3562,25 +3561,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						setTimeout(relayout, 500);
 					};
 
-					lib.skill._usecard.filter = event => ui.clear.delay === 'usecard' && event.card.name != 'wuxie';
-					lib.skill._usecard.content = () => {
-						ui.clear.delay = false;
-						game.broadcastAll(ui.clear);
-					};
-
-					lib.skill._decadeUI_usecardBegin = {
-						trigger: { global: 'useCardBegin' },
-						forced: true,
-						popup: false,
-						priority: -100,
-						filter: function (event) {
-							return !ui.clear.delay && event.card.name != 'wuxie';
-						},
-						content: function () {
-							ui.clear.delay = 'usecard';
-						}
-					};
-
 					lib.skill._decadeUI_dieKillEffect = {
 						trigger: { source: ['dieBegin'] },
 						forced: true,
@@ -4369,6 +4349,24 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						/\s*game\s*\.\s*delayx\s*\(\s*\)\s*;(?=\s*if\s*\(\s*event\s*\.\s*updatePile\s*\)\s*game\s*\.\s*updateRoundNumber\s*\(\s*\)\s*;)/
 					);
 					lib.element.Player = class extends lib.element.Player {
+						get group() {
+							return this._decadeGroup;
+						}
+						set group(group) {
+							this._decadeGroup = group;
+							this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || group;
+							if (!group) return;
+							if (!decadeUI.config.campIdentityImageMode) {
+								this.node.campWrap.node.campName.innerHTML = group ? get.translation(group)[0] : '';
+								return;
+							}
+							const image = new Image();
+							const url = lib.decade_extGroupImage && lib.decade_extGroupImage[group] || `${decadeUIPath}image/decoration/name_${group}.png`;
+							this._finalGroup = group;
+							image.onerror = () => this.node.campWrap.node.campName.innerHTML = this._finalGroup ? get.translation(this._finalGroup)[0] : '';
+							this.node.campWrap.node.campName.style.backgroundImage = `url("${url}")`;
+							image.src = url;
+						}
 						buildNode() {
 							super.buildNode();
 							this.node.avatar.className = 'primary-avatar';
@@ -4594,27 +4592,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								this.skills.splice(index, 1);
 								this.innerHTML = this.skills.reduce((html, senderSkill) => `${html}[${get.translation(senderSkill)}]`, '');
 							};
-							Object.defineProperty(this, 'group', {
-								configurable: true,
-								get() {
-									return this._group;
-								},
-								set(group) {
-									this.node.campWrap.dataset.camp = get.bordergroup(this.name, true) || (this._group = group);
-									if (!group) return;
-									if (!decadeUI.config.campIdentityImageMode) {
-										this.node.campWrap.node.campName.innerHTML = group ? get.translation(group)[0] : '';
-										return;
-									}
-									const image = new Image();
-									const url = lib.decade_extGroupImage && lib.decade_extGroupImage[group] || `${decadeUIPath}image/decoration/name_${group}.png`;
-									this._finalGroup = group;
-									image.onerror = () => this.node.campWrap.node.campName.innerHTML = this._finalGroup ? get.translation(this._finalGroup)[0] : '';
-									this.node.campWrap.node.campName.innerHTML = '';
-									this.node.campWrap.node.campName.style.backgroundImage = `url("${url}")`;
-									image.src = url;
-								}
-							});
 						}
 						buildExtra() {
 							void 0;
@@ -4795,7 +4772,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 
 							return this;
 						}
-						uninit() {
+						$uninit() {
 							if (this.$jieMark) this.$jieMark.remove();
 
 							this.stopDynamic();
@@ -4808,7 +4785,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 
 							campName.style.removeProperty('background-image');
-							return super.uninit(...arguments);
+							super.$uninit(...arguments);
 						}
 						getState() {
 							const state = super.getState(...arguments);
@@ -5653,6 +5630,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						buildNode() {
 							super.buildNode();
 							const node = this.node;
+							this.removeChild(node.info);
 							const suitNumber = this.$suitnum = node.suitnum = ui.create.div('.suit-num', this);
 							this.$gaintag = node.gaintag = ui.create.div('.gaintag.info', this);
 							const judgeMark = node.judgeMark = ui.create.div('.judge-mark', this);
@@ -5887,6 +5865,41 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 						}
 					);
+					const uiCreateIdentityCard = ui.create.identityCard;
+					ui.create.identityCard = function (identity) {
+						const identityCard = uiCreateIdentityCard(...arguments);
+						const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {});
+						const decadeCardSource = decadeExtCardImage[`identity_${identity}`];
+
+						if (decadeCardSource) {
+							identityCard.classList.add('decade-card');
+
+							if (!identityCard.classList.contains('infohidden')) identityCard.style.backgroundImage = `url('${identityCard.decadeCardSource = decadeCardSource}')`;
+
+							const avatar = identityCard.node.avatar;
+
+							if (avatar) avatar.remove();
+
+							const frameBackground = identityCard.node.framebg;
+
+							if (frameBackground) frameBackground.remove();
+
+							new MutationObserver(mutationRecords => mutationRecords.forEach(mutationRecord => {
+								const target = mutationRecord.target;
+								const informationHidden = target.classList.contains('infohidden');
+
+								if (informationHidden == mutationRecord.oldValue.split(' ').includes('infohidden')) return;
+
+								if (informationHidden) target.style.removeProperty('background-image');
+								else target.style.backgroundImage = `url('${target.decadeCardSource}')`;
+							})).observe(identityCard, {
+								attributeFilter: ['class'],
+								attributeOldValue: true
+							});
+						}
+
+						return identityCard;
+					}
 					ui.updateRoundNumber = (roundNumber, cardPileNumber) => {
 						if (ui.cardPileNumber && window.decadeUI) ui.cardPileNumber.textContent = `牌堆${cardPileNumber} 第${roundNumber}轮`;
 					};
@@ -6545,23 +6558,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							dui.queueNextFrameTick(dui.layoutDiscard, dui);
 						}
 
-						if (!card.classList.contains('invalided')) {
-
-							var event = _status.event;
-							var judging = event.triggername == 'judge' || event.name == 'judge';
-							if (event.name == 'judge' && !ui.clear.delay) {
-								ui.clear.delay = 'judge';
-								event.parent.addMessageHook('finished', function () {
-									if (ui.clear.delay == 'judge') {
-										ui.clear.delay = false;
-										ui.clear();
-									}
-								});
-							}
-							if (ui.clear.delay || (judging && !event.finished))
-								return;
-						}
-
 						card.classList.add('invalided');
 						setTimeout(function (card) {
 							card.remove();
@@ -6968,7 +6964,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						tagNode = card.appendChild(dui.element.create('used-info'));
 
 					card.$usedtag = tagNode;
-					var blameEvent;
+
 					if (event.blameEvent)
 						event = event.blameEvent;
 
@@ -8420,8 +8416,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 				};
 				let changelog;
 				try {
-					changelog = lib.init.reqSync(`local:${decadeUIPath}CHANGELOG.md`).split(/\r\n|\r|\n/);
-					if (!changelog[changelog.length - 1]) changelog.pop();
+					changelog = lib.init.reqSync(`local:${decadeUIPath}CHANGELOG.md`).trim().split(/\r\n|\r|\n/);
 				}
 				catch (ignored) {
 					changelog = [];
