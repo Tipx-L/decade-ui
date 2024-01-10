@@ -8234,7 +8234,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					skin_xushi_拈花思君: '徐　氏-拈花思君',
 					skin_xushi_为夫弑敌: '徐　氏-为夫弑敌',
 					skin_zhangchangpu_钟桂香蒲: '张昌蒲-钟桂香蒲',
-					skin_zhangchunhua_花好月圆: '张春华-花好月圆',
+					skin_zhangchunhua_绰约多姿: '张春华-绰约多姿',
 					skin_zhangchunhua_战场绝版: '张春华-战场绝版',
 					skin_zhoufei_晴空暖鸢: '周　妃-晴空暖鸢',
 					skin_zhangqiying_逐鹿天下: '张琪瑛-逐鹿天下',
