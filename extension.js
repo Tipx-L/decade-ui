@@ -1,7 +1,8 @@
 /*jshint esversion: 6 */
 'use strict';
+import {nonameInitialized} from '../../noname/util/index.js'
 game.import('extension', (lib, game, ui, get, ai, _status) => {
-	const decadeUIName = '十周年UI', decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
+	const decadeUIName = '十周年UI',decadeUIResolvePath=`${nonameInitialized}extension/${decadeUIName}/`, decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
 		/**
 		 * @overload
 		 * @param {string} method
@@ -8103,7 +8104,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						if (!decadeExtCardImage[fileName]) decadeExtCardImage[fileName] = `${decadeUIPath}image/card/${file}`;
 					}));
 					else if (typeof resolveLocalFileSystemURL == 'function') new Promise((resolve, reject) => {
-						resolveLocalFileSystemURL(`${decadeUIPath}image/card/`, resolve, reject);
+						resolveLocalFileSystemURL(`${decadeUIResolvePath}image/card/`, resolve, reject);
 					}).then(directoryEntry => new Promise((resolve, reject) => {
 						directoryEntry.createReader().readEntries(resolve, reject);
 					})).then(entries => entries.forEach(entry => {
