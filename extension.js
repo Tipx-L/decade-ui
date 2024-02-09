@@ -1,7 +1,7 @@
 /*jshint esversion: 6 */
 'use strict';
 import {nonameInitialized} from '../../noname/util/index.js'
-game.import('extension', (lib, game, ui, get, ai, _status) => {
+game.import('extension', async function(lib, game, ui, get, ai, _status){
 	const decadeUIName = '十周年UI',decadeUIResolvePath=`${nonameInitialized}extension/${decadeUIName}/`, decadeUIPath = window.decadeUIPath = `${lib.assetURL}extension/${decadeUIName}/`, Mixin = window.Mixin = {
 		/**
 		 * @overload
@@ -46,14 +46,10 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			eval(`${method} = ${redirectedMethod}`);
 		}
 	};
-	let versionMD;
-	try {
-		versionMD = lib.init.reqSync(`local:${decadeUIPath}VERSION.md`).trim().split(/\r\n|\r|\n/);
-	}
-	catch (ignored) {
-		versionMD = ["", ""];
-	}
-	const version = versionMD[0], updateDate = versionMD[1];
+	const extensionInfo = 
+	await lib.init.promises.json(`${decadeUIPath}info.json`);
+
+	const version = extensionInfo.version, updateDate = extensionInfo.updateDate;
 	/**
 	 * Insert line break opportunities into a URL.
 	 * @param {string} url The URL.
@@ -226,7 +222,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							if (event.popup !== false) {
 								player.$damagepop(num, 'water');
 							}
-							if (_status.dying.contains(player) && player.hp > 0) {
+							if (_status.dying.includes(player) && player.hp > 0) {
 								_status.dying.remove(player);
 								game.broadcast(function (list) {
 									_status.dying = list;
@@ -243,10 +239,10 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						EventContent.chooseBool = function () {
 							"step 0"
 							if ((typeof event.isMine == 'function') && event.isMine()) {
-								if (event.frequentSkill && !lib.config.autoskilllist.contains(event.frequentSkill)) {
+								if (event.frequentSkill && !lib.config.autoskilllist.includes(event.frequentSkill)) {
 									ui.click.ok();
 									return;
-								} else if (event.hsskill && _status.prehidden_skills.contains(event.hsskill)) {
+								} else if (event.hsskill && _status.prehidden_skills.includes(event.hsskill)) {
 									ui.click.cancel();
 									return;
 								}
@@ -314,7 +310,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						EventContent.chooseTarget = function () {
 							"step 0"
 							if ((typeof event.isMine == 'function') && event.isMine()) {
-								if (event.hsskill && !event.forced && _status.prehidden_skills.contains(event.hsskill)) {
+								if (event.hsskill && !event.forced && _status.prehidden_skills.includes(event.hsskill)) {
 									ui.click.cancel();
 									return;
 								}
@@ -443,7 +439,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								var range = get.select(event.selectCard);
 								if ((typeof event.isMine == 'function') && event.isMine()) {
 									game.check();
-									if (event.hsskill && !event.forced && _status.prehidden_skills.contains(event.hsskill)) {
+									if (event.hsskill && !event.forced && _status.prehidden_skills.includes(event.hsskill)) {
 										ui.click.cancel();
 										return;
 									}
@@ -610,7 +606,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									game.modeSwapPlayer(player);
 								}
 								if ((typeof event.isMine == 'function') && event.isMine()) {
-									if (event.hsskill && !event.forced && _status.prehidden_skills.contains(event.hsskill)) {
+									if (event.hsskill && !event.forced && _status.prehidden_skills.includes(event.hsskill)) {
 										ui.click.cancel();
 										return;
 									}
@@ -866,7 +862,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 								}
 								return;
 							} else if ((typeof event.isMine == 'function') && event.isMine()) {
-								if (event.hsskill && !event.forced && _status.prehidden_skills.contains(event.hsskill)) {
+								if (event.hsskill && !event.forced && _status.prehidden_skills.includes(event.hsskill)) {
 									ui.click.cancel();
 									return;
 								}
@@ -1362,7 +1358,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									else trigger.untrigger();
 								} else {
 									for (var i = 0; i < 20; i++) {
-										if (event.acted.contains(event.player.next)) {
+										if (event.acted.includes(event.player.next)) {
 											break;
 										} else {
 											event.player = event.player.next;
@@ -2798,7 +2794,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									if (!lib.filter.cardAiIncluded(cards[i])) {
 										nochess = false;
 									} else if (event._cardChoice && !firstCheck) {
-										if (!event._cardChoice.contains(cards[i])) {
+										if (!event._cardChoice.includes(cards[i])) {
 											nochess = false;
 										}
 									} else {
@@ -2860,7 +2856,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 										nochess = false;
 									} else if (event._targetChoice && event._targetChoice.has(card)) {
 										var targetChoice = event._targetChoice.get(card);
-										if (!Array.isArray(targetChoice) || !targetChoice.contains(players[i])) {
+										if (!Array.isArray(targetChoice) || !targetChoice.includes(players[i])) {
 											nochess = false;
 										}
 									} else if (!event.filterTarget(card, player, players[i])) {
@@ -2932,7 +2928,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							if (event._skillChoice) {
 								skills2 = event._skillChoice;
 								for (var i = 0; i < skills2.length; i++) {
-									if (((typeof event.isMine == 'function') && event.isMine()) || !event._aiexclude.contains(skills2[i])) {
+									if (((typeof event.isMine == 'function') && event.isMine()) || !event._aiexclude.includes(skills2[i])) {
 										skills.push(skills2[i]);
 									}
 								}
@@ -2950,12 +2946,12 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									info = get.info(skills2[i]);
 									enable = false;
 									if (typeof info.enable == 'function') enable = info.enable(event);
-									else if (typeof info.enable == 'object') enable = info.enable.contains(event.name);
+									else if (typeof info.enable == 'object') enable = info.enable.includes(event.name);
 									else if (info.enable == 'phaseUse') enable = (event.type == 'phase');
 									else if (typeof info.enable == 'string') enable = (info.enable == event.name);
 
 									if (enable) {
-										if (!game.expandSkills(player.getSkills(false).concat(lib.skill.global)).contains(skills2[i]) && (info.noHidden || get.mode() != 'guozhan' || player.hasSkillTag('nomingzhi', false, null, true))) enable = false;
+										if (!game.expandSkills(player.getSkills(false).concat(lib.skill.global)).includes(skills2[i]) && (info.noHidden || get.mode() != 'guozhan' || player.hasSkillTag('nomingzhi', false, null, true))) enable = false;
 										if (info.filter && !info.filter(event, player)) enable = false;
 										if (info.viewAs && typeof info.viewAs != 'function' && event.filterCard && !event.filterCard(info.viewAs, player, event)) enable = false;
 										if (info.viewAs && typeof info.viewAs != 'function' && info.viewAsFilter && info.viewAsFilter(player) == false) enable = false;
@@ -2978,7 +2974,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 									}
 
 									if (enable) {
-										if (((typeof event.isMine == 'function') && event.isMine()) || !event._aiexclude.contains(skills2[i])) {
+										if (((typeof event.isMine == 'function') && event.isMine()) || !event._aiexclude.includes(skills2[i])) {
 											skills.add(skills2[i]);
 										}
 										event._skillChoice.add(skills2[i]);
@@ -2990,7 +2986,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							var globallist = lib.skill.global.slice(0);
 							game.expandSkills(globallist);
 							for (var i = 0; i < skills.length; i++) {
-								if (globallist.contains(skills[i])) {
+								if (globallist.includes(skills[i])) {
 									globalskills.push(skills.splice(i--, 1)[0]);
 								}
 							}
@@ -2998,7 +2994,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							var ownedskills = player.getSkills('invisible', false);
 							game.expandSkills(ownedskills);
 							for (var i = 0; i < skills.length; i++) {
-								if (!ownedskills.contains(skills[i])) {
+								if (!ownedskills.includes(skills[i])) {
 									equipskills.push(skills.splice(i--, 1)[0]);
 								}
 							}
@@ -3110,7 +3106,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 
 						var args = new Array(arguments.length);
 						for (var i = 0; i < args.length; i++) args[i] = arguments[i];
-						if ((args.length == 0 || args.contains('card')) && _status.event.player) {
+						if ((args.length == 0 || args.includes('card')) && _status.event.player) {
 							var cards = _status.event.player.getCards('hejs');
 							for (j = 0; j < cards.length; j++) {
 								cards[j].classList.remove('selected');
@@ -3126,7 +3122,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						}
 						var players = game.players.slice(0);
 						if (_status.event.deadTarget) players.addArray(game.dead);
-						if ((args.length == 0 || args.contains('target'))) {
+						if ((args.length == 0 || args.includes('target'))) {
 							for (j = 0; j < players.length; j++) {
 								players[j].classList.remove('selected');
 								players[j].classList.remove('selectable');
@@ -3138,7 +3134,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 							ui.selected.targets.length = 0;
 						}
-						if ((args.length == 0 || args.contains('button')) && _status.event.dialog && _status.event.dialog.buttons) {
+						if ((args.length == 0 || args.includes('button')) && _status.event.dialog && _status.event.dialog.buttons) {
 							for (j = 0; j < _status.event.dialog.buttons.length; j++) {
 								_status.event.dialog.buttons[j].classList.remove('selectable');
 								_status.event.dialog.buttons[j].classList.remove('selected');
@@ -3608,7 +3604,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							}
 						} else if (event.relatedLose) {
 							var owner = event.relatedLose.player;
-							if (owner.getCards('hejsx').contains(card)) {
+							if (owner.getCards('hejsx').includes(card)) {
 								event.finish();
 								return;
 							}
@@ -4040,7 +4036,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 						event.lose_list = lose_list;
 						event.getNum = function (card) {
 							for (var i of event.lose_list) {
-								if (i[1].contains && i[1].contains(card)) return get.number(card, i[0]);
+								if (i[1].contains && i[1].includes(card)) return get.number(card, i[0]);
 							}
 							return get.number(card, false);
 						};
@@ -4058,7 +4054,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 							} else lose_list.push([player, result[0].cards]);
 						};
 						for (var j = 0; j < targets.length; j++) {
-							if (event.list.contains(targets[j])) {
+							if (event.list.includes(targets[j])) {
 								var i = event.list.indexOf(targets[j]);
 								if (result[i].skill && lib.skill[result[i].skill] && lib.skill[result[i].skill].onCompare) {
 									event.list[i].logSkill(result[i].skill);
@@ -8049,7 +8045,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 			decadeUI.init();
 			console.timeEnd(decadeUIName);
 		},
-		precontent: () => {
+		precontent:async function(){
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
 			lib.decade_isXingchengVersion = true;
 			lib.decade_isShowKVersion = true;
@@ -8085,16 +8081,6 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					this.css(`${decadeUIPath}decadeLayout.css`);
 					this.css(`${decadeUIPath}layout.css`);
 					this.css(`${decadeUIPath}player.css`);
-
-					this.js(`${decadeUIPath}animation.js`);
-					this.js(`${decadeUIPath}component.js`);
-					this.js(`${decadeUIPath}content.js`);
-					this.js(`${decadeUIPath}dynamicSkin.js`);
-					this.js(`${decadeUIPath}dynamicSkinTemplate.js`);
-					this.js(`${decadeUIPath}effect.js`);
-					this.js(`${decadeUIPath}menu.js`);
-					this.js(`${decadeUIPath}skill.js`);
-					this.js(`${decadeUIPath}spine.js`);
 					const decadeExtCardImage = lib.decade_extCardImage || (lib.decade_extCardImage = {});
 					if (window.fs) new Promise((resolve, reject) => fs.readdir(`${__dirname}/${decadeUIPath}image/card/`, (errnoException, files) => {
 						if (errnoException) reject(errnoException);
@@ -8113,27 +8099,72 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 					}));
 					return this;
 				};
-				decadeModule.js = function (path) {
-					if (!path) return console.error('path');
+				decadeModule.init2 = function(){
+					return Promise.all([
+					this.asyncJs(`${decadeUIPath}animation.js`),
+					this.asyncJs(`${decadeUIPath}component.js`),
+					this.asyncJs(`${decadeUIPath}content.js`),
+					this.asyncJs(`${decadeUIPath}dynamicSkin.js`),
+					this.asyncJs(`${decadeUIPath}dynamicSkinTemplate.js`),
+					this.asyncJs(`${decadeUIPath}effect.js`),
+					this.asyncJs(`${decadeUIPath}menu.js`),
+					this.asyncJs(`${decadeUIPath}skill.js`),
+					this.asyncJs(`${decadeUIPath}spine.js`)
+					]);
+				};
+				decadeModule.asyncJs = async function(path){
+					return new Promise((resolve,reject)=>{
+						decadeModule.js(path,ret=>{
+							resolve();
+						});
+					});
+				};
+				decadeModule.asyncCss = async function(path){
+					return new Promise((resolve,reject)=>{
+						decadeModule.css(path,ret=>{
+							resolve();
+						});
+					});
+				};
+				decadeModule.js = function (path,callback) {
+					if (!path) {
+						//alert(path+"加载失败！");
+						if(callback)callback(false);
+						return console.error('path');
+					}
 
 					const script = document.createElement('script');
 					script.onload = function () {
 						this.remove();
+						if(callback)callback(true);
 					};
 					script.onerror = function () {
 						this.remove();
+						//alert(path+"加载失败！");
 						console.error(`${this.src}not found`);
+						if(callback)callback(false);
 					};
 					script.src = `${path}?v=${version}`;
 					document.head.appendChild(script);
 					return script;
 				};
-				decadeModule.css = function (path) {
-					if (!path) return console.error('path');
+				decadeModule.css = function (path,callback) {
+					if (!path){
+						if(callback){
+							callback(false);
+						}
+						return console.error('path');
+					}
 					const link = document.createElement('link');
 					link.rel = 'stylesheet';
 					link.href = `${path}?v=${version}`;
 					document.head.appendChild(link);
+					link.onload = function(){
+						if(callback)callback(true);
+					};
+					link.onerror = function(){
+						if(callback)callback(false);
+					}
 					return link;
 				};
 				decadeModule.import = function (module) {
@@ -8143,7 +8174,7 @@ game.import('extension', (lib, game, ui, get, ai, _status) => {
 				};
 				return decadeModule.init();
 			}({});
-
+			await window.decadeModule.init2();
 			Object.defineProperties(_status, {
 				connectMode: {
 					configurable: true,

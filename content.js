@@ -257,9 +257,9 @@ decadeModule.import(function (lib, game, ui, get, ai, _status) {
 					switch (this.objectType) {
 						case 'content':
 							if (guanXing.selected) {
-								var y = (this.offsetHeight * decadeUI.zooms.body * decadeUI.zooms.card) / 2 - (guanXing.cards[0].contains(guanXing.selected) ? 12 : -12);
+								var y = (this.offsetHeight * decadeUI.zooms.body * decadeUI.zooms.card) / 2 - (guanXing.cards[0].includes(guanXing.selected) ? 12 : -12);
 								var index = e.layerY < y ? 0 : 1;
-								if (!guanXing.cards[index].contains(guanXing.selected)) {
+								if (!guanXing.cards[index].includes(guanXing.selected)) {
 									guanXing.switch(guanXing.selected);
 								}
 							}

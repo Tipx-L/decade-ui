@@ -1033,7 +1033,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 		// 			}
 		// 			if (!player.isUnderControl(true)) {
 		// 				for (var i = 0; i < dialog.buttons.length; i++) {
-		// 					if (!content.shown.contains(dialog.buttons[i].link)) {
+		// 					if (!content.shown.includes(dialog.buttons[i].link)) {
 		// 						dialog.buttons[i].node.group.remove();
 		// 						dialog.buttons[i].node.hp.remove();
 		// 						dialog.buttons[i].node.intro.remove();
@@ -1141,7 +1141,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 		// 					currentname = event.dialog.querySelector('.selected.button').link;
 		// 				}
 		// 				player.storage.huashen.shown.add(currentname);
-		// 				if (!player.additionalSkills.huashen || !player.additionalSkills.huashen.contains(link)) {
+		// 				if (!player.additionalSkills.huashen || !player.additionalSkills.huashen.includes(link)) {
 		// 					player.addAdditionalSkill('huashen', link);
 		// 					//player.logSkill('huashen2');
 		// 					player.flashAvatar('huashen', currentname);
@@ -1175,13 +1175,13 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 		// 					// 					if(typeof trigger.player=='string'){
 		// 					// 						if(trigger.player==name) add=true;
 		// 					// 					}
-		// 					// 					else if(trigger.player.contains(name)) add=true;
+		// 					// 					else if(trigger.player.includes(name)) add=true;
 		// 					// 				}
 		// 					// 				if(trigger.global){
 		// 					// 					if(typeof trigger.global=='string'){
 		// 					// 						if(trigger.global==name) add=true;
 		// 					// 					}
-		// 					// 					else if(trigger.global.contains(name)) add=true;
+		// 					// 					else if(trigger.global.includes(name)) add=true;
 		// 					// 				}
 		// 					// 				if(add&&player.isOut()==false) list.push(skills[i]);
 		// 					// 			}
@@ -1513,7 +1513,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 							case 0:
 								{
 									if (game.hasPlayer(function (current) {
-										return lib.filter.targetEnabled2(event.card, player, current) && !event.targets.contains(current) && get.effect(current, event.card, player, player) > 0;
+										return lib.filter.targetEnabled2(event.card, player, current) && !event.targets.includes(current) && get.effect(current, event.card, player, player) > 0;
 									})) return 1.6 + Math.random();
 									return 0;
 								}
@@ -1555,7 +1555,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 					player.chooseTarget('请选择' + get.translation(trigger.card) + '的额外目标', true,
 						function (card, player, target) {
 							var player = _status.event.player;
-							if (_status.event.targets.contains(target)) return false;
+							if (_status.event.targets.includes(target)) return false;
 							return lib.filter.targetEnabled2(_status.event.card, player, target);
 						}).set('targets', trigger.targets).set('card', trigger.card).set('ai',
 							function (target) {
@@ -1580,7 +1580,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 					game.log(player, '选择了', '#g【奔袭】', '的', '#y选项' + get.cnNumber(result.links[i] + 1, true));
 					map[result.links[i]](trigger, player, event);
 				}
-				if (!result.links.contains(0)) event.finish();
+				if (!result.links.includes(0)) event.finish();
 				"step 2"
 				if (result.targets) {
 					player.line(result.targets);
