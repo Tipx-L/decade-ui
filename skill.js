@@ -161,7 +161,7 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 						[底部初始化的牌],            	// 必选，可为null，但顶部不能为null
 						底部允许控制的牌数范围,        	// 可选，不填根据初始化的牌数量
 						第一个参数的玩家是否可见);      	// 可选，不设置则根据控制观星的玩家来显示
-					
+
 					// undefined 均为可设置，其他为只读或调用
 					var properties = {
 						caption: undefined,        	// 设置标题
@@ -1461,133 +1461,133 @@ decadeModule.import((lib, game, ui, get, ai, _status) => {
 				game.updateRoundNumber()
 			}
 		},
-		xinbenxi: {
-			content: function () {
-				"step 0"
-				event.videoId = lib.status.videoId++;
-				var func = function (card, id, bool) {
-					var list = ['为XXX多指定一个目标', '令XXX无视防具', '令XXX不可被抵消', '当XXX造成伤害时摸一张牌',];
-					var choiceList = ui.create.dialog('【奔袭】：请选择一至两项', 'forcebutton');
-					choiceList.videoId = id;
-					for (var i = 0; i < list.length; i++) {
-						list[i] = list[i].replace(/XXX/g, card);
-						var str = '<div class="popup text" style="width:calc(100% - 10px);display:inline-block">';
-						if (i == 0 && !bool) str += '<div style="opacity:0.5">';
-						str += list[i];
-						if (i == 0 && !bool) str += '</div>';
-						str += '</div>';
-						var next = choiceList.add(str);
-						next.firstChild.addEventListener(lib.config.touchscreen ? 'touchend' : 'click', ui.click.button);
-						next.firstChild.link = i;
-						for (var j in lib.element.button) {
-							next[j] = lib.element.button[j];
-						}
-						choiceList.buttons.add(next.firstChild);
-					}
-					return choiceList;
-				};
-				if (player.isOnline2()) {
-					player.send(func, get.translation(trigger.card), event.videoId, lib.skill.xinbenxi.filterx(trigger, player));
-				}
-				event.dialog = func(get.translation(trigger.card), event.videoId, lib.skill.xinbenxi.filterx(trigger, player));
-				if (player != game.me || _status.auto) {
-					event.dialog.style.display = 'none';
-				}
-				var next = player.chooseButton();
-				next.set('dialog', event.videoId);
-				next.set('forced', true);
-				next.set('selectButton', [1, 2]);
-				next.set('filterButton',
-					function (button) {
-						if (button.link == 0) {
-							return _status.event.bool1;
-						};
-						return true;
-					});
-				next.set('bool1', lib.skill.xinbenxi.filterx(trigger, player));
-				next.set('ai',
-					function (button) {
-						var player = _status.event.player;
-						var event = _status.event.getTrigger();
-						switch (button.link) {
-							case 0:
-								{
-									if (game.hasPlayer(function (current) {
-										return lib.filter.targetEnabled2(event.card, player, current) && !event.targets.includes(current) && get.effect(current, event.card, player, player) > 0;
-									})) return 1.6 + Math.random();
-									return 0;
-								}
-							case 1:
-								{
-									if (event.targets.filter(function (current) {
-										var eff1 = get.effect(current, event.card, player, player);
-										player._xinbenxi_ai = true;
-										var eff2 = get.effect(current, event.card, player, player);
-										delete player._xinbenxi_ai;
-										return eff1 > eff2;
-									}).length) return 1.9 + Math.random();
-									return Math.random();
-								}
-							case 2:
-								{
-									var num = 1.3;
-									if (event.card.name == 'sha' && event.targets.filter(function (current) {
-										if (current.mayHaveShan() && get.attitude(player, current) <= 0) {
-											if (current.hasSkillTag('useShan')) num = 1.9;
-											return true;
-										}
-										return false;
-									}).length) return num + Math.random();
-									return 0.5 + Math.random();
-								}
-							case 3:
-								{
-									return (get.tag(event.card, 'damage') || 0) + Math.random();
-								}
-						}
-					});
-				"step 1"
-				if (player.isOnline2()) {
-					player.send('closeDialog', event.videoId);
-				}
-				event.dialog.close();
-				var map = [function (trigger, player, event) {
-					player.chooseTarget('请选择' + get.translation(trigger.card) + '的额外目标', true,
-						function (card, player, target) {
-							var player = _status.event.player;
-							if (_status.event.targets.includes(target)) return false;
-							return lib.filter.targetEnabled2(_status.event.card, player, target);
-						}).set('targets', trigger.targets).set('card', trigger.card).set('ai',
-							function (target) {
-								var trigger = _status.event.getTrigger();
-								var player = _status.event.player;
-								return get.effect(target, trigger.card, player, player);
-							});
-				},
-				function (trigger, player, event) {
-					player.storage.xinbenxi_unequip.add(trigger.card);
-				},
-				function (trigger, player, event) {
-					player.storage.xinbenxi_directHit.add(trigger.card);
-					trigger.nowuxie = true;
-					trigger.customArgs.
-						default.directHit2 = true;
-				},
-				function (trigger, player, event) {
-					player.storage.xinbenxi_damage.add(trigger.card);
-				}];
-				for (var i = 0; i < result.links.length; i++) {
-					game.log(player, '选择了', '#g【奔袭】', '的', '#y选项' + get.cnNumber(result.links[i] + 1, true));
-					map[result.links[i]](trigger, player, event);
-				}
-				if (!result.links.includes(0)) event.finish();
-				"step 2"
-				if (result.targets) {
-					player.line(result.targets);
-					trigger.targets.addArray(result.targets);
-				}
-			}
-		}
+		// xinbenxi: {
+		// 	content: function () {
+		// 		"step 0"
+		// 		event.videoId = lib.status.videoId++;
+		// 		var func = function (card, id, bool) {
+		// 			var list = ['为XXX多指定一个目标', '令XXX无视防具', '令XXX不可被抵消', '当XXX造成伤害时摸一张牌',];
+		// 			var choiceList = ui.create.dialog('【奔袭】：请选择一至两项', 'forcebutton');
+		// 			choiceList.videoId = id;
+		// 			for (var i = 0; i < list.length; i++) {
+		// 				list[i] = list[i].replace(/XXX/g, card);
+		// 				var str = '<div class="popup text" style="width:calc(100% - 10px);display:inline-block">';
+		// 				if (i == 0 && !bool) str += '<div style="opacity:0.5">';
+		// 				str += list[i];
+		// 				if (i == 0 && !bool) str += '</div>';
+		// 				str += '</div>';
+		// 				var next = choiceList.add(str);
+		// 				next.firstChild.addEventListener(lib.config.touchscreen ? 'touchend' : 'click', ui.click.button);
+		// 				next.firstChild.link = i;
+		// 				for (var j in lib.element.button) {
+		// 					next[j] = lib.element.button[j];
+		// 				}
+		// 				choiceList.buttons.add(next.firstChild);
+		// 			}
+		// 			return choiceList;
+		// 		};
+		// 		if (player.isOnline2()) {
+		// 			player.send(func, get.translation(trigger.card), event.videoId, lib.skill.xinbenxi.filterx(trigger, player));
+		// 		}
+		// 		event.dialog = func(get.translation(trigger.card), event.videoId, lib.skill.xinbenxi.filterx(trigger, player));
+		// 		if (player != game.me || _status.auto) {
+		// 			event.dialog.style.display = 'none';
+		// 		}
+		// 		var next = player.chooseButton();
+		// 		next.set('dialog', event.videoId);
+		// 		next.set('forced', true);
+		// 		next.set('selectButton', [1, 2]);
+		// 		next.set('filterButton',
+		// 			function (button) {
+		// 				if (button.link == 0) {
+		// 					return _status.event.bool1;
+		// 				};
+		// 				return true;
+		// 			});
+		// 		next.set('bool1', lib.skill.xinbenxi.filterx(trigger, player));
+		// 		next.set('ai',
+		// 			function (button) {
+		// 				var player = _status.event.player;
+		// 				var event = _status.event.getTrigger();
+		// 				switch (button.link) {
+		// 					case 0:
+		// 						{
+		// 							if (game.hasPlayer(function (current) {
+		// 								return lib.filter.targetEnabled2(event.card, player, current) && !event.targets.includes(current) && get.effect(current, event.card, player, player) > 0;
+		// 							})) return 1.6 + Math.random();
+		// 							return 0;
+		// 						}
+		// 					case 1:
+		// 						{
+		// 							if (event.targets.filter(function (current) {
+		// 								var eff1 = get.effect(current, event.card, player, player);
+		// 								player._xinbenxi_ai = true;
+		// 								var eff2 = get.effect(current, event.card, player, player);
+		// 								delete player._xinbenxi_ai;
+		// 								return eff1 > eff2;
+		// 							}).length) return 1.9 + Math.random();
+		// 							return Math.random();
+		// 						}
+		// 					case 2:
+		// 						{
+		// 							var num = 1.3;
+		// 							if (event.card.name == 'sha' && event.targets.filter(function (current) {
+		// 								if (current.mayHaveShan() && get.attitude(player, current) <= 0) {
+		// 									if (current.hasSkillTag('useShan')) num = 1.9;
+		// 									return true;
+		// 								}
+		// 								return false;
+		// 							}).length) return num + Math.random();
+		// 							return 0.5 + Math.random();
+		// 						}
+		// 					case 3:
+		// 						{
+		// 							return (get.tag(event.card, 'damage') || 0) + Math.random();
+		// 						}
+		// 				}
+		// 			});
+		// 		"step 1"
+		// 		if (player.isOnline2()) {
+		// 			player.send('closeDialog', event.videoId);
+		// 		}
+		// 		event.dialog.close();
+		// 		var map = [function (trigger, player, event) {
+		// 			player.chooseTarget('请选择' + get.translation(trigger.card) + '的额外目标', true,
+		// 				function (card, player, target) {
+		// 					var player = _status.event.player;
+		// 					if (_status.event.targets.includes(target)) return false;
+		// 					return lib.filter.targetEnabled2(_status.event.card, player, target);
+		// 				}).set('targets', trigger.targets).set('card', trigger.card).set('ai',
+		// 					function (target) {
+		// 						var trigger = _status.event.getTrigger();
+		// 						var player = _status.event.player;
+		// 						return get.effect(target, trigger.card, player, player);
+		// 					});
+		// 		},
+		// 		function (trigger, player, event) {
+		// 			player.storage.xinbenxi_unequip.add(trigger.card);
+		// 		},
+		// 		function (trigger, player, event) {
+		// 			player.storage.xinbenxi_directHit.add(trigger.card);
+		// 			trigger.nowuxie = true;
+		// 			trigger.customArgs.
+		// 				default.directHit2 = true;
+		// 		},
+		// 		function (trigger, player, event) {
+		// 			player.storage.xinbenxi_damage.add(trigger.card);
+		// 		}];
+		// 		for (var i = 0; i < result.links.length; i++) {
+		// 			game.log(player, '选择了', '#g【奔袭】', '的', '#y选项' + get.cnNumber(result.links[i] + 1, true));
+		// 			map[result.links[i]](trigger, player, event);
+		// 		}
+		// 		if (!result.links.includes(0)) event.finish();
+		// 		"step 2"
+		// 		if (result.targets) {
+		// 			player.line(result.targets);
+		// 			trigger.targets.addArray(result.targets);
+		// 		}
+		// 	}
+		// }
 	};
 	if (!_status.connectMode) {
 		Object.keys(skillMap).forEach(key => {
