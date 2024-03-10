@@ -3145,7 +3145,110 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 							}, trigger.source, trigger.player);
 						}
 					};
+					lib.element.content.addJudge = function () {
+						"step 0";
+						const cardName = typeof card == 'string' ? card : card.name , cardInfo = lib.card[cardName];
+						if (cards) {
+							var owner = get.owner(cards[0]);
+							if (owner) {
+								event.relatedLose = owner.lose(cards, ui.special).set('getlx', false);
+								if (cardInfo && !cardInfo.blankCard) {
+									event.relatedLose.set('visible', true);
+									event.set('visible', true);
+								}
+							}
+							else if (get.position(cards[0]) == 'c') event.updatePile = true;
+						}
+						"step 1";
+						if (cards[0].willBeDestroyed('judge', player, event)) {
+							cards[0].selfDestroy(event);
+							event.finish();
+							return;
+						}
+						else if (event.relatedLose) {
+							var owner = event.relatedLose.player;
+							if (owner.getCards('hejsx').includes(card)) {
+								event.finish();
+								return;
+							}
+						}
+						cards[0].fix();
+						cards[0].style.transform = '';
+						cards[0].classList.remove('drawinghidden');
+						delete cards[0]._transform;
+						var viewAs = typeof card == 'string' ? card : card.name;
+						if (!lib.card[viewAs] || (!lib.card[viewAs].effect && !lib.card[viewAs].noEffect) ) {
+							game.cardsDiscard(cards[0]);
+						}
+						else {
+							cards[0].style.transform = '';
+							cards[0].classList.add('drawinghidden');
+							player.node.judges.insertBefore(cards[0], player.node.judges.firstChild);
+							if (_status.discarded) {
+								_status.discarded.remove(cards[0]);
+							}
+							ui.updatej(player);
+							game.broadcast(function (player, card, viewAs){
+								card.fix();
+								card.style.transform = '';
+								card.classList.add('drawinghidden');
+								card.viewAs = viewAs;
+								if (viewAs && viewAs != card.name) {
+									if (window.decadeUI) {
+										card.classList.add('fakejudge');
+										card.node.judgeMark.node.judge.innerHTML = get.translation(viewAs)[0];
 
+									} else if (card.classList.contains('fullskin') || card.classList.contains('fullborder')) {
+										card.classList.add('fakejudge');
+										card.node.background.innerHTML = lib.translate[viewAs + '_bg'] || get.translation(viewAs)[0];
+									}
+								} else {
+									card.classList.remove('fakejudge');
+									if (window.decadeUI) card.node.judgeMark.node.judge.innerHTML = get.translation(card.name)[0];
+								}
+
+								player.node.judges.insertBefore(card, player.node.judges.firstChild);
+								ui.updatej(player);
+								if (card.clone && (card.clone.parentNode == player.parentNode || card.clone.parentNode == ui.arena)) {
+									card.clone.moveDelete(player);
+									game.addVideo('gain2', player, get.cardsInfo([card]));
+								}
+							}, player, cards[0], viewAs);
+							if (cards[0].clone && (cards[0].clone.parentNode == player.parentNode || cards[0].clone.parentNode == ui.arena)) {
+								cards[0].clone.moveDelete(player);
+								game.addVideo('gain2', player, get.cardsInfo(cards));
+							}
+							// player.$gain2(cards);
+							if (get.itemtype(card) != 'card') {
+								if (typeof card == 'string') cards[0].viewAs = card;
+								else cards[0].viewAs = card.name;
+							}
+							else {
+								delete cards[0].viewAs;
+							}
+							if (cards[0].viewAs && cards[0].viewAs != cards[0].name) {
+								if (cards[0].classList.contains('fullskin') || cards[0].classList.contains('fullborder')) {
+									cards[0].classList.add('fakejudge');
+									cards[0].node.judgeMark.node.judge.innerHTML = get.translation(cards[0].viewAs)[0];
+									//cards[0].node.background.innerHTML = lib.translate[cards[0].viewAs + '_bg'] || get.translation(cards[0].viewAs)[0];
+								}
+								if(lib.card[viewAs].blankCard){
+									game.log(player, '被扣置了<span class="yellowtext">' + get.translation(cards[0].viewAs) + '</span>');
+								}
+								else {
+									game.log(player, '被贴上了<span class="yellowtext">' + get.translation(cards[0].viewAs) + '</span>（', cards, '）');
+								}
+							}
+							else {
+								cards[0].classList.remove('fakejudge');
+								cards[0].node.judgeMark.node.judge.innerHTML = get.translation(cards[0].name)[0];
+								game.log(player, '被贴上了', cards);
+							}
+							game.addVideo('addJudge', player, [get.cardInfo(cards[0]), cards[0].viewAs]);
+						}
+						if (event.updatePile) game.updateRoundNumber();
+					}
+					/*
 					lib.element.content.addJudge = function () {
 						"step 0";
 						if (cards) {
@@ -3236,7 +3339,7 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 							game.addVideo('addJudge', player, [get.cardInfo(cards[0]), cards[0].viewAs]);
 						}
 						if (event.updatePile) game.updateRoundNumber();
-					};
+					};*/
 
 					lib.element.content.chooseToCompare = function () {
 						"step 0"
