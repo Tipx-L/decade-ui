@@ -2229,6 +2229,7 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 
 								node.innerHTML = tempname;
 								node.tempname = tempname;
+								return node;
 							},
 							rarity: function (button) {
 								var rarity = game.getRarity(button.link);
