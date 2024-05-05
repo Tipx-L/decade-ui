@@ -3962,7 +3962,7 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 						},
 						/\s*sort\s*=\s*lib\s*\.\s*config\s*\.\s*sort_card\s*\(\s*cards\s*\[\s*num\s*\]\s*\)\s*;\s*if\s*\(\s*lib\s*\.\s*config\s*\.\s*reverse_sort\s*\)\s*sort\s*=-\s*sort\s*;/,
 						'',
-						/\s*cards\s*\[\s*num\s*\]\s*\.\s*style\s*\.\s*transform\s*=\s*''\s*;/,
+						/\s*cards\s*\[\s*num\s*\]\s*\.\s*style\s*\.\s*transform\s*=\s*""\s*;/,
 						'',
 						/(?=\s*if\s*\(\s*_status\s*\.\s*discarded\s*\)\s*{)/,
 						(fragment, cards, num) => {
@@ -3972,7 +3972,7 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 						'',
 						/\s*var\s*addv\s*=\s*function\s*\(\s*\)\s*{[\s\S]*?}\s*;/,
 						'',
-						/(?=\s*if\s*\(\s*event\s*\.\s*animate\s*==\s*'draw'\s*\)\s*{)/,
+						/(?=\s*if\s*\(\s*event\s*\.\s*animate\s*==\s*"draw"\s*\)\s*{)/,
 						(event, player, dui, fragment, handcards, broadcast) => {
 							var gainTo = function (cards, nodelay) {
 								cards.duiMod = event.source;
@@ -7711,6 +7711,9 @@ game.import('extension', async function(lib, game, ui, get, ai, _status){
 		},
 		precontent:async function(){
 			if (['tafang', 'chess'].includes(get.mode()) && lib.config.extension_十周年UI_closeWhenChess) return;
+			if(lib.config.extension_十周年UI_outcropSkin){
+				lib.characterDefaultPicturePath = 'extension/十周年UI/image/decoration/default_silhouette_';
+			}
 			lib.decade_isXingchengVersion = true;
 			lib.decade_isShowKVersion = true;
 			if (lib.config[`extension_${decadeUIName}_eruda`]) {
